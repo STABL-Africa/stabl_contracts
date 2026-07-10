@@ -1,0 +1,12 @@
+{
+  "network": "testnet",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "rpc_url": "https://soroban-testnet.stellar.org",
+  "horizon_url": "https://horizon-testnet.stellar.org",
+  "contracts": {
+    "smart_account": {
+      "id": "CAVRPI6UAWYGGMWE4GW3X2ROZ5GVBHKGKXUY57KCBKDXXSHQUJAE7VLW",
+      "deployed_at": "2026-07-09T12:34:49+00:00"
+    }
+  }
+}
