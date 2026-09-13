@@ -4,7 +4,7 @@ build:
 	stellar contract build
 
 test:
-	cargo test
+	cargo test -- --show-output
 
 deploy-testnet:
 	scripts/deploy_testnet.sh
