@@ -1,0 +1,23 @@
+[package]
+name = "stabl-passkey-multi-signer"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+# Marks this crate as a Soroban contract so `stellar-scaffold build` treats a
+# normal cargo dependency on it (see contracts/factory/Cargo.toml) as a
+# build-order edge: smart-account is built before any crate that depends on it.
+[package.metadata.stellar]
+contract = true
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-accounts = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+ed25519-dalek = "2"
