@@ -7,6 +7,14 @@
     "smart_account": {
       "id": "CAVRPI6UAWYGGMWE4GW3X2ROZ5GVBHKGKXUY57KCBKDXXSHQUJAE7VLW",
       "deployed_at": "2026-07-09T12:34:49+00:00"
+    },
+    "stabl_passkey_verifier": {
+      "id": "CDFVGYRUS4TWUN2ATUVSF3XZUWKLIPDLQNXCCVW337W2LOC7KOZIIZX5",
+      "deployed_at": "2026-09-17T16:27:48+00:00"
+    },
+    "stabl_passkey_multi_signer": {
+      "wasm_hash": "2861efc7b121de7670d0ac10c7293d1754deccb3959ce6b5e9f3017f4ca7b3bf",
+      "uploaded_at": "2026-09-17T16:27:58+00:00"
     }
   }
 }

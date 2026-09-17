@@ -18,6 +18,7 @@ on-chain under programmable authorization rules, signed with passkeys.
 | Crate | Description |
 | --- | --- |
 | [`stabl_passkey_multi_signer`](contracts/stabl_passkey_multi_signer) | Multi-signer smart account built on [OpenZeppelin Stellar Contracts](https://github.com/OpenZeppelin/stellar-contracts) (`stellar-accounts`). Signers are either delegated (another Stellar address, verified natively) or external (a verifier contract plus public key, used for secp256r1/WebAuthn passkeys). Authorization is expressed as context rules with pluggable policies such as signature thresholds. |
+| [`stabl_passkey_verifier`](contracts/stabl_passkey_verifier) | Stateless WebAuthn (passkey) signature verifier implementing OpenZeppelin's `Verifier` trait. Deployed once per network and referenced by smart accounts as `Signer::External(verifier, pubkey ++ credential_id)`. No admin, no upgrade path: a fix is a new address that each account migrates to under its own authorization. |
 | [`smart_account`](contracts/smart_account) | Minimal reference custom account: a stored set of ed25519 signers, any one of which authorizes. Useful for understanding `__check_auth` end to end without the OpenZeppelin machinery. |
 
 Both contracts implement Soroban's `CustomAccountInterface`: the contract

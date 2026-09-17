@@ -14,12 +14,19 @@ Stellar smart accounts — custom account contracts implementing
 ## Conventions
 
 - One crate per contract under `contracts/`, workspace deps in root `Cargo.toml`
-  (`soroban-sdk = "26"`).
+  (`soroban-sdk = "27"`).
 - Every deploy must go through `scripts/deploy_testnet.sh` so
   `deployments/testnet.json` stays the single source of truth for contract IDs —
   stabl_pay reads it.
-- New contracts: add the crate, then add a `deploy <name> -- <constructor args>`
-  line to `scripts/deploy_testnet.sh`.
+- New contracts: add the crate, then add a `wanted <name> && deploy <name> -- <args>`
+  line to `scripts/deploy_testnet.sh`. Contracts that stabl_pay instantiates
+  per user (e.g. `stabl_passkey_multi_signer`) use `upload` instead, which
+  records `wasm_hash` rather than an instance `id`.
+- `scripts/deploy_testnet.sh deployer <name...>` redeploys only the named
+  contracts; other manifest entries are untouched.
+- Smart account signers sign `sha256(signature_payload || xdr(context_rule_ids))`,
+  not the raw host payload. That digest is what goes to the browser as the
+  WebAuthn challenge. See `contracts/stabl_passkey_multi_signer/src/test.rs`.
 - Testnet identity alias is `deployer` (global CLI config, funded via friendbot).
 
 ## Known issues
