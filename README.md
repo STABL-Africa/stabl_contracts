@@ -1,7 +1,28 @@
 # stabl_contracts
 
-Soroban smart contracts for stabl, primarily Stellar **smart accounts**
-(custom account contracts) used by the `../stabl_pay` Elixir server.
+[![CI](https://github.com/STABL-Africa/stabl_contracts/actions/workflows/ci.yml/badge.svg)](https://github.com/STABL-Africa/stabl_contracts/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Soroban smart contracts for [STABL](https://stabl.africa): Stellar **smart
+accounts** (custom account contracts) that let groups hold and move funds
+on-chain under programmable authorization rules, signed with passkeys.
+
+> [!WARNING]
+> This is experimental software and is provided on an "as is" and "as available"
+> basis. We do not give any warranties and will not be liable for any losses
+> incurred through any use of this code base. These contracts have not been
+> audited and are deployed to testnet only. Do not use them with real funds.
+
+## Contracts
+
+| Crate | Description |
+| --- | --- |
+| [`stabl_passkey_multi_signer`](contracts/stabl_passkey_multi_signer) | Multi-signer smart account built on [OpenZeppelin Stellar Contracts](https://github.com/OpenZeppelin/stellar-contracts) (`stellar-accounts`). Signers are either delegated (another Stellar address, verified natively) or external (a verifier contract plus public key, used for secp256r1/WebAuthn passkeys). Authorization is expressed as context rules with pluggable policies such as signature thresholds. |
+| [`smart_account`](contracts/smart_account) | Minimal reference custom account: a stored set of ed25519 signers, any one of which authorizes. Useful for understanding `__check_auth` end to end without the OpenZeppelin machinery. |
+
+Both contracts implement Soroban's `CustomAccountInterface`: the contract
+address itself acts as a Stellar account, and `__check_auth` decides whether
+a given set of signatures authorizes a given set of invocations.
 
 ## Layout
 
@@ -14,7 +35,8 @@ scripts/deploy_testnet.sh build + deploy everything, update the manifest
 ## Prerequisites
 
 - Rust via rustup, with the wasm target: `rustup target add wasm32v1-none`
-- Stellar CLI: `brew install stellar-cli`
+- Stellar CLI: `brew install stellar-cli` (or see the
+  [Stellar docs](https://developers.stellar.org/docs/tools/cli/install-cli))
 - A funded testnet identity: `stellar keys generate deployer --network testnet --fund`
 
 ## Workflow
@@ -39,39 +61,34 @@ stellar contract invoke --id smart_account --source deployer --network testnet -
 
 (`smart_account` resolves through the alias saved in `.stellar/` at deploy time.)
 
-## Contracts
+## Integrating from off-chain code
 
-### smart_account
-
-A custom account contract (`CustomAccountInterface`): the contract address
-acts as a Stellar account whose authorization logic is `__check_auth`.
-Current starter logic: a stored set of ed25519 signers, any one of which
-authorizes. `set_signers` rotates the set and requires the account's own
-auth. Next step is secp256r1/WebAuthn verification in `__check_auth` so
-stabl_pay passkeys can sign directly.
-
-The constructor takes the initial signer set as raw 32-byte ed25519 public
-keys (hex). The deploy script seeds it with the deployer key.
-
-## Pointing stabl_pay at these contracts
-
-Soroban contract calls go through **Soroban RPC**, not Horizon — Horizon
-only serves classic operations. stabl_pay's `dev.exs` already switches to
-`StablPay.Blockchain.StellarRpcClient` when `STELLAR_RPC_URL` is set, so run
-the server with:
-
-```sh
-STELLAR_RPC_URL=https://soroban-testnet.stellar.org mix phx.server
-```
-
-and read contract IDs from `deployments/testnet.json` in this repo
-(network passphrase and both endpoints are included in the manifest).
+Soroban contract calls go through **Soroban RPC**
+(`https://soroban-testnet.stellar.org`).
+`deployments/testnet.json` carries everything a client
+needs: network passphrase, RPC and Horizon URLs, and the current contract ID
+for each contract. Treat it as the single source of truth and read contract
+IDs from it rather than hard-coding them.
 
 ## Gotchas
 
 - `soroban-env-host` declares `ed25519-dalek >= 2.0.0` (unbounded); the
-  ed25519-dalek 3.0 release breaks its build. `Cargo.lock` pins 2.2.0 — if a
+  ed25519-dalek 3.0 release breaks its build. `Cargo.lock` pins 2.2.0. If a
   fresh resolve fails in `soroban-env-host`, re-pin with
   `cargo update -p ed25519-dalek@3.0.0 --precise 2.2.0`.
 - Testnet resets quarterly; after a reset, re-fund the deployer and rerun
   `make deploy-testnet`.
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `cargo fmt --all` and
+`make test` before opening a PR; CI checks formatting, unit tests and the
+wasm build.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
+
+## License
+
+[MIT](LICENSE) © 2026 STABL Africa

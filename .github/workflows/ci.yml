@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: fmt, test, wasm build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      # stellar-accounts enables soroban-sdk's `experimental_spec_shaking_v2`,
+      # which refuses to build under plain `cargo build`; the wasm step must go
+      # through `stellar contract build`.
+      - uses: stellar/stellar-cli@v27.0.0
+
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: unit tests
+        run: cargo test --workspace
+
+      - name: build contracts to wasm
+        run: stellar contract build

@@ -1,15 +1,12 @@
 use soroban_sdk::{
     auth::{Context, CustomAccountInterface},
-    contract, contractclient, contracterror, contractimpl, contracttype,
+    contract, contractimpl,
     crypto::Hash,
-    panic_with_error, symbol_short, Address, BytesN, Env, IntoVal, Map, String, Symbol, Val, Vec,
+    Address, Env, Map, String, Val, Vec,
 };
-use stellar_accounts::policies::simple_threshold::SimpleThresholdAccountParams;
 use stellar_accounts::smart_account::{
-    add_context_rule, add_policy, add_signer, do_check_auth, get_context_rule,
-    get_context_rules_count, remove_context_rule, remove_policy, remove_signer,
-    update_context_rule_name, update_context_rule_valid_until, AuthPayload, ContextRule,
-    ContextRuleType, ExecutionEntryPoint, Signer, SmartAccount, SmartAccountError,
+    add_context_rule, do_check_auth, AuthPayload, ContextRule, ContextRuleType, Signer,
+    SmartAccount, SmartAccountError,
 };
 
 #[contract]

@@ -48,8 +48,10 @@ impl SmartAccount {
             return Err(Error::NoSigners);
         }
         env.storage().instance().set(&DataKey::Signers, &signers);
-        env.events()
-            .publish((symbol_short!("signers"), symbol_short!("created")), signers);
+        env.events().publish(
+            (symbol_short!("signers"), symbol_short!("created")),
+            signers,
+        );
         Ok(())
     }
 
@@ -68,8 +70,10 @@ impl SmartAccount {
         }
         env.current_contract_address().require_auth();
         env.storage().instance().set(&DataKey::Signers, &signers);
-        env.events()
-            .publish((symbol_short!("signers"), symbol_short!("rotated")), signers);
+        env.events().publish(
+            (symbol_short!("signers"), symbol_short!("rotated")),
+            signers,
+        );
         Ok(())
     }
 }

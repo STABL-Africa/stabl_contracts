@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build all contracts and deploy them to Stellar testnet, recording the
-# resulting contract IDs in deployments/testnet.json (which stabl_pay reads).
+# resulting contract IDs in deployments/testnet.json (the manifest that
+# off-chain clients read to find the current contract addresses).
 #
 # Usage: scripts/deploy_testnet.sh [identity]
 #   identity  Stellar CLI key alias to deploy from (default: deployer)
