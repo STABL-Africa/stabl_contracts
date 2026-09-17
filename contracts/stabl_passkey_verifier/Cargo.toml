@@ -1,0 +1,23 @@
+[package]
+name = "stabl-passkey-verifier"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/STABL-Africa/stabl_contracts"
+publish = false
+
+[package.metadata.stellar]
+contract = true
+
+[lib]
+# rlib so sibling contract crates can register this verifier in their tests.
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-accounts = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+hex-literal = { workspace = true }
