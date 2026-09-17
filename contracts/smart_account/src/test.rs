@@ -42,12 +42,17 @@ fn set_signers_emits_rotated_event() {
     let ContractEventBody::V0(body) = &all.events().last().unwrap().body;
 
     let sym = |s: &str| ScVal::Symbol(ScSymbol(s.try_into().unwrap()));
-    assert_eq!(body.topics.to_vec(), std::vec![sym("signers"), sym("rotated")]);
+    assert_eq!(
+        body.topics.to_vec(),
+        std::vec![sym("signers"), sym("rotated")]
+    );
 
     let expected_data = ScVal::Vec(Some(ScVec(
-        std::vec![ScVal::Bytes(ScBytes(new_pk.to_array().to_vec().try_into().unwrap()))]
-            .try_into()
-            .unwrap(),
+        std::vec![ScVal::Bytes(ScBytes(
+            new_pk.to_array().to_vec().try_into().unwrap()
+        ))]
+        .try_into()
+        .unwrap(),
     )));
     assert_eq!(body.data, expected_data);
 }

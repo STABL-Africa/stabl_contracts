@@ -5,3 +5,6 @@ target
 .soroban
 .stellar
 .DS_Store
+
+# Internal planning notes
+docs/

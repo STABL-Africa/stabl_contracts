@@ -5,10 +5,8 @@ use ed25519_dalek::SigningKey;
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::xdr::{AccountId, PublicKey, ScAddress, Uint256};
 use soroban_sdk::TryFromVal;
-use soroban_sdk::{vec, Address, BytesN, Env, Map, Val};
-use stellar_accounts::policies;
+use soroban_sdk::{vec, Address, Env, Map, Val};
 use stellar_accounts::smart_account::Signer;
-use stellar_accounts::verifiers::webauthn::{self, WebAuthnSigData};
 
 fn g_address(env: &Env, sk: &SigningKey) -> Address {
     let pk = sk.verifying_key().to_bytes();
