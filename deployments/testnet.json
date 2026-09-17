@@ -15,6 +15,10 @@
     "stabl_passkey_multi_signer": {
       "wasm_hash": "2861efc7b121de7670d0ac10c7293d1754deccb3959ce6b5e9f3017f4ca7b3bf",
       "uploaded_at": "2026-09-17T16:27:58+00:00"
+    },
+    "stabl_account_factory": {
+      "id": "CA3AATOXATEXMY6PHB4VEAZQW5LEAUE2J2KLVDUWDITZT3MHHGOJYUR6",
+      "deployed_at": "2026-09-17T17:30:47+00:00"
     }
   }
 }

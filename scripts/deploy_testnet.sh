@@ -114,6 +114,14 @@ wanted stabl_passkey_verifier && deploy stabl_passkey_verifier
 # user's signers, so only the wasm is uploaded here.
 wanted stabl_passkey_multi_signer && upload stabl_passkey_multi_signer
 
+# stabl_account_factory: pins the multi signer wasm hash from the manifest and
+# deploys per-user accounts on request. Redeploy it whenever the multi signer
+# wasm changes.
+if wanted stabl_account_factory; then
+  ACCOUNT_WASM_HASH=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['contracts']['stabl_passkey_multi_signer']['wasm_hash'])" "$DEPLOYMENTS")
+  deploy stabl_account_factory -- --wasm_hash "$ACCOUNT_WASM_HASH"
+fi
+
 echo
 echo "Deployments written to $DEPLOYMENTS"
 cat "$DEPLOYMENTS"

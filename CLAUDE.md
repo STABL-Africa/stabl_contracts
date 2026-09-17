@@ -27,6 +27,10 @@ Stellar smart accounts — custom account contracts implementing
 - Smart account signers sign `sha256(signature_payload || xdr(context_rule_ids))`,
   not the raw host payload. That digest is what goes to the browser as the
   WebAuthn challenge. See `contracts/stabl_passkey_multi_signer/src/test.rs`.
+- `make test` builds wasm first: `stabl_account_factory` tests `contractimport!`
+  the real `stabl_passkey_multi_signer.wasm`. CI does the same.
+- `make e2e` serves `scripts/e2e/` (browser harness, testnet, real passkey).
+  It is the reference for how stabl_pay must build `AuthPayload`.
 - Testnet identity alias is `deployer` (global CLI config, funded via friendbot).
 
 ## Known issues
