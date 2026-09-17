@@ -1,0 +1,23 @@
+[package]
+name = "stabl-account-factory"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/STABL-Africa/stabl_contracts"
+publish = false
+
+[package.metadata.stellar]
+contract = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+stellar-accounts = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+stabl-passkey-verifier = { path = "../stabl_passkey_verifier" }
+p256 = { version = "0.13.2", features = ["ecdsa"] }

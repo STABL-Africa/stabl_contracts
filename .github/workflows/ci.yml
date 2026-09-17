@@ -30,8 +30,8 @@ jobs:
       - name: rustfmt
         run: cargo fmt --all -- --check
 
-      - name: unit tests
-        run: cargo test --workspace
-
       - name: build contracts to wasm
         run: stellar contract build
+
+      - name: unit tests
+        run: cargo test --workspace
