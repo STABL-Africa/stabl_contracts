@@ -2,8 +2,9 @@
 extern crate std;
 use super::*;
 use ed25519_dalek::{Signer as _, SigningKey};
+use soroban_sdk::events::Event as _;
 use soroban_sdk::testutils::{BytesN as _, Events as _};
-use soroban_sdk::xdr::{ContractEventBody, ScBytes, ScSymbol, ScVal, ScVec};
+
 use soroban_sdk::{vec, Env, IntoVal};
 
 fn signer_pk(env: &Env, sk: &SigningKey) -> BytesN<32> {
@@ -36,25 +37,13 @@ fn set_signers_emits_rotated_event() {
     let client = SmartAccountClient::new(&env, &contract_id);
 
     let new_pk = signer_pk(&env, &SigningKey::from_bytes(&[9u8; 32]));
-    client.set_signers(&vec![&env, new_pk.clone()]);
+    let signers = vec![&env, new_pk.clone()];
+    client.set_signers(&signers);
 
-    let all = env.events().all().filter_by_contract(&contract_id);
-    let ContractEventBody::V0(body) = &all.events().last().unwrap().body;
-
-    let sym = |s: &str| ScVal::Symbol(ScSymbol(s.try_into().unwrap()));
     assert_eq!(
-        body.topics.to_vec(),
-        std::vec![sym("signers"), sym("rotated")]
+        env.events().all().filter_by_contract(&contract_id),
+        [SignerRotatedEvent { signers: signers }.to_xdr(&env, &contract_id)]
     );
-
-    let expected_data = ScVal::Vec(Some(ScVec(
-        std::vec![ScVal::Bytes(ScBytes(
-            new_pk.to_array().to_vec().try_into().unwrap()
-        ))]
-        .try_into()
-        .unwrap(),
-    )));
-    assert_eq!(body.data, expected_data);
 }
 
 #[test]

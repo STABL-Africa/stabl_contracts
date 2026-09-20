@@ -8,9 +8,9 @@
 #![no_std]
 use soroban_sdk::{
     auth::{Context, CustomAccountInterface},
-    contract, contracterror, contractimpl, contracttype,
+    contract, contracterror, contractevent, contractimpl, contracttype,
     crypto::Hash,
-    symbol_short, BytesN, Env, Vec,
+    BytesN, Env, Vec,
 };
 
 #[contract]
@@ -32,6 +32,16 @@ pub enum DataKey {
     Signers,
 }
 
+#[contractevent(topics = ["signers", "create"], data_format="vec")]
+pub struct SignerAddEvent {
+    signers: Vec<BytesN<32>>,
+}
+
+#[contractevent(topics = ["signers", "rotated"], data_format="vec")]
+pub struct SignerRotatedEvent {
+    signers: Vec<BytesN<32>>,
+}
+
 /// One ed25519 signature over the signature payload, attributed to a signer.
 #[contracttype]
 #[derive(Clone)]
@@ -48,10 +58,7 @@ impl SmartAccount {
             return Err(Error::NoSigners);
         }
         env.storage().instance().set(&DataKey::Signers, &signers);
-        env.events().publish(
-            (symbol_short!("signers"), symbol_short!("created")),
-            signers,
-        );
+        SignerAddEvent { signers }.publish(&env);
         Ok(())
     }
 
@@ -70,10 +77,7 @@ impl SmartAccount {
         }
         env.current_contract_address().require_auth();
         env.storage().instance().set(&DataKey::Signers, &signers);
-        env.events().publish(
-            (symbol_short!("signers"), symbol_short!("rotated")),
-            signers,
-        );
+        SignerRotatedEvent { signers }.publish(&env);
         Ok(())
     }
 }
