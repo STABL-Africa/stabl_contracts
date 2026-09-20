@@ -19,6 +19,10 @@
     "stabl_account_factory": {
       "id": "CA3AATOXATEXMY6PHB4VEAZQW5LEAUE2J2KLVDUWDITZT3MHHGOJYUR6",
       "deployed_at": "2026-09-17T17:30:47+00:00"
+    },
+    "stabl_p256_verifier": {
+      "id": "CBBBQ333D7IBJBIM7KVWMCMM3VLO65E2X3QT2YRTZSOS2WOS7FKRUYMC",
+      "deployed_at": "2026-09-20T18:39:23+00:00"
     }
   }
 }
