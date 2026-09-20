@@ -110,6 +110,10 @@ wanted smart_account && deploy smart_account -- --signers "[\"$DEPLOYER_HEX\"]"
 # admin. One instance per network, shared by every passkey smart account.
 wanted stabl_passkey_verifier && deploy stabl_passkey_verifier
 
+# stabl_p256_verifier: stateless raw secp256r1 verifier for device-bound keys
+# (Secure Enclave / StrongBox). No constructor, no admin, one per network.
+wanted stabl_p256_verifier && deploy stabl_p256_verifier
+
 # stabl_multi_signer: instantiated per user by the server with that
 # user's signers, so only the wasm is uploaded here.
 wanted stabl_multi_signer && upload stabl_multi_signer
