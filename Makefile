@@ -1,4 +1,4 @@
-.PHONY: build test deploy-testnet fund clean e2e
+.PHONY: build test deploy-testnet fund clean
 
 build:
 	stellar contract build
@@ -17,7 +17,3 @@ fund:
 clean:
 	cargo clean
 
-# Browser end-to-end harness against testnet (see scripts/e2e/README.md).
-e2e:
-	@echo "open http://localhost:4100/"
-	python3 -m http.server 4100 --directory scripts/e2e

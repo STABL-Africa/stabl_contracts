@@ -3,9 +3,9 @@
 //! Deploys `stabl_passkey_multi_signer` instances from a pinned wasm hash.
 //!
 //! Exists because the smart account must be initialised through its
-//! constructor, and the off-chain server (Elixir `stellar_sdk`) can only issue
-//! plain contract invocations, not `CreateContractV2` host functions with
-//! constructor arguments. Wrapping the deploy in a contract call makes it
+//! constructor, and some client SDKs can only issue plain contract
+//! invocations, not `CreateContractV2` host functions with constructor
+//! arguments. Wrapping the deploy in a contract call makes it
 //! reachable from any client.
 //!
 //! The factory is permissionless and immutable: anyone may call `deploy` and

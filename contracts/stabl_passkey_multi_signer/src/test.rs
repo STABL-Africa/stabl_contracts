@@ -81,7 +81,7 @@ impl Passkey {
         }
     }
 
-    /// `key_data` exactly as stabl_pay stores and registers it on-chain:
+    /// `key_data` exactly as a server stores and registers it on-chain:
     /// 65-byte uncompressed public key followed by the credential ID.
     fn key_data(&self, e: &Env) -> Bytes {
         let mut b = Bytes::from_array(e, &self.pubkey);
@@ -128,7 +128,7 @@ impl Passkey {
 }
 
 /// What signers actually sign: `sha256(signature_payload || xdr(context_rule_ids))`.
-/// stabl_pay must send this, not the raw payload, as the WebAuthn challenge.
+/// A server must send this, not the raw payload, as the WebAuthn challenge.
 fn auth_digest(e: &Env, payload: &[u8; 32], rule_ids: &Vec<u32>) -> [u8; 32] {
     let mut preimage = Bytes::from_array(e, payload);
     preimage.append(&rule_ids.clone().to_xdr(e));
