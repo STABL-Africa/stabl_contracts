@@ -1781,7 +1781,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "stabl-passkey-multi-signer"
+name = "stabl-multi-signer"
 version = "0.0.0"
 dependencies = [
  "ed25519-dalek",

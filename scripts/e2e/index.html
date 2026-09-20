@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Passkey smart account — testnet end-to-end</title>
+<style>
+  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.3rem; }
+  label { display: block; margin-top: .8rem; font-weight: 600; }
+  input, select { width: 100%; box-sizing: border-box; padding: .4rem; font: inherit; font-family: ui-monospace, monospace; }
+  button { margin-top: 1rem; padding: .6rem 1.2rem; font: inherit; font-weight: 600; cursor: pointer; }
+  pre { background: #f5f5f5; padding: .8rem; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .warn { background: #fff4d6; border-left: 4px solid #e0a800; padding: .6rem .8rem; }
+</style>
+</head>
+<body>
+<h1>Passkey smart account — testnet end-to-end</h1>
+<p class="warn">Testnet only. The fee payer secret is used in-page to sign the fee-paying transaction and is never stored. Use a throwaway testnet key, e.g. the <code>deployer</code> alias (<code>stellar keys show deployer</code>).</p>
+
+<div class="row">
+  <div><label>Soroban RPC URL<input id="rpc" value="https://soroban-testnet.stellar.org"></label></div>
+  <div><label>Network passphrase<input id="passphrase" value="Test SDF Network ; September 2015"></label></div>
+</div>
+<label>Smart account contract (C…), deployed via stabl_account_factory<input id="account" placeholder="C…"></label>
+<label>Passkey verifier contract (C…), from deployments/testnet.json<input id="verifier" placeholder="C…"></label>
+<label>key_data hex (65-byte uncompressed P-256 public key ++ credential ID), exactly as registered on-chain<input id="keydata"></label>
+<label>Credential ID hex (the suffix of key_data)<input id="credid"></label>
+<label>WebAuthn rpId the passkey was registered under<input id="rpid" value="localhost"></label>
+<label>Fee payer secret (S…, testnet)<input id="secret" type="password"></label>
+<label>Operation
+  <select id="op">
+    <option value="add_signer">add_signer(0, Delegated(fee payer G-address)) — requires account auth</option>
+    <option value="rules_count">get_context_rules_count() — no auth, connectivity check</option>
+  </select>
+</label>
+<button id="run">Run</button>
+<h3>Log</h3>
+<pre id="log"></pre>
+
+<script type="module" src="./e2e.js"></script>
+</body>
+</html>

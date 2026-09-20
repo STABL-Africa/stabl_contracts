@@ -17,6 +17,7 @@ fund:
 clean:
 	cargo clean
 
+
 # Browser end-to-end harness against testnet (see scripts/e2e/README.md).
 e2e:
 	@echo "open http://localhost:4100/"

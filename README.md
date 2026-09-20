@@ -17,8 +17,8 @@ on-chain under programmable authorization rules, signed with passkeys.
 
 | Crate | Description |
 | --- | --- |
-| [`stabl_passkey_multi_signer`](contracts/stabl_passkey_multi_signer) | Multi-signer smart account built on [OpenZeppelin Stellar Contracts](https://github.com/OpenZeppelin/stellar-contracts) (`stellar-accounts`). Signers are either delegated (another Stellar address, verified natively) or external (a verifier contract plus public key, used for secp256r1/WebAuthn passkeys). Authorization is expressed as context rules with pluggable policies such as signature thresholds. |
-| [`stabl_account_factory`](contracts/stabl_account_factory) | Permissionless, immutable factory that deploys `stabl_passkey_multi_signer` instances from a pinned wasm hash via `deploy(salt, signers, policies)`. Exists because the account needs its constructor and off-chain clients (the Elixir SDK) can only issue plain invocations. `predict(salt)` gives the address ahead of time. |
+| [`stabl_multi_signer`](contracts/stabl_multi_signer) | Multi-signer smart account built on [OpenZeppelin Stellar Contracts](https://github.com/OpenZeppelin/stellar-contracts) (`stellar-accounts`). Signers are either delegated (another Stellar address, verified natively) or external (a verifier contract plus public key, used for secp256r1/WebAuthn passkeys). Authorization is expressed as context rules with pluggable policies such as signature thresholds. |
+| [`stabl_account_factory`](contracts/stabl_account_factory) | Permissionless, immutable factory that deploys `stabl_multi_signer` instances from a pinned wasm hash via `deploy(salt, signers, policies)`. Exists because the account needs its constructor and some client SDKs can only issue plain invocations, not constructor deploys. `predict(salt)` gives the address ahead of time. |
 | [`stabl_passkey_verifier`](contracts/stabl_passkey_verifier) | Stateless WebAuthn (passkey) signature verifier implementing OpenZeppelin's `Verifier` trait. Deployed once per network and referenced by smart accounts as `Signer::External(verifier, pubkey ++ credential_id)`. No admin, no upgrade path: a fix is a new address that each account migrates to under its own authorization. |
 | [`smart_account`](contracts/smart_account) | Minimal reference custom account: a stored set of ed25519 signers, any one of which authorizes. Useful for understanding `__check_auth` end to end without the OpenZeppelin machinery. |
 
@@ -29,7 +29,9 @@ a given set of signatures authorizes a given set of invocations.
 ## Trying it on testnet
 
 `scripts/e2e/` is a browser page that authorises a call on a deployed account
-with a real passkey, end to end. See [scripts/e2e/README.md](scripts/e2e/README.md).
+with a real passkey, end to end, and logs every intermediate value. It doubles
+as the reference for off-chain client implementations. See
+[scripts/e2e/README.md](scripts/e2e/README.md).
 
 ## Layout
 
