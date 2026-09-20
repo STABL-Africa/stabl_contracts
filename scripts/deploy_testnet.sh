@@ -114,6 +114,10 @@ wanted stabl_passkey_verifier && deploy stabl_passkey_verifier
 # (Secure Enclave / StrongBox). No constructor, no admin, one per network.
 wanted stabl_p256_verifier && deploy stabl_p256_verifier
 
+# stabl_threshold_policy: M-of-N threshold policy, stateful but keyed per
+# (account, rule). No constructor, no admin, one per network.
+wanted stabl_threshold_policy && deploy stabl_threshold_policy
+
 # stabl_multi_signer: instantiated per user by the server with that
 # user's signers, so only the wasm is uploaded here.
 wanted stabl_multi_signer && upload stabl_multi_signer

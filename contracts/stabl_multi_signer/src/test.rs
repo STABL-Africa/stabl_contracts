@@ -16,6 +16,8 @@ use soroban_sdk::{
     Val, Vec,
 };
 use stabl_passkey_verifier::contract::StablPasskeyVerifierContract;
+use stabl_threshold_policy::contract::StablThresholdPolicyContract;
+use stellar_accounts::policies::simple_threshold::SimpleThresholdAccountParams;
 use stellar_accounts::smart_account::{AuthPayload, Signer, SmartAccountError};
 use stellar_accounts::verifiers::utils::base64_url_encode;
 use stellar_accounts::verifiers::webauthn::{
@@ -310,4 +312,158 @@ fn duplicate_passkey_with_different_credential_id_is_rejected_at_construction() 
             Map::<Address, Val>::new(&e),
         ),
     );
+}
+
+// ---------------------------------------------------------------------------
+// Threshold policy: turns "every signer must sign" into M-of-N.
+// ---------------------------------------------------------------------------
+
+/// `policies` map for the constructor: the deployed threshold policy with the
+/// given threshold, exactly as a server passes it to the factory.
+fn threshold_policies(e: &Env, policy: &Address, threshold: u32) -> Map<Address, Val> {
+    map![
+        e,
+        (
+            policy.clone(),
+            SimpleThresholdAccountParams { threshold }.into_val(e)
+        )
+    ]
+}
+
+#[test]
+fn threshold_one_of_two_lets_either_passkey_sign_alone() {
+    let e = Env::default();
+    let verifier = e.register(StablPasskeyVerifierContract, ());
+    let policy = e.register(StablThresholdPolicyContract, ());
+    let alice = Passkey::new(51);
+    let bob = Passkey::new(52);
+
+    // The constructor installs the policy under the account's own authority;
+    // no mock auth needed because the account is the caller.
+    let account = e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![&e, alice.signer(&e, &verifier), bob.signer(&e, &verifier)],
+            threshold_policies(&e, &policy, 1),
+        ),
+    );
+
+    let payload = [0x51u8; 32];
+    let contexts = some_context(&e);
+    let rule_ids: Vec<u32> = vec![&e, 0];
+    let challenge = auth_digest(&e, &payload, &rule_ids);
+
+    let only_alice = AuthPayload {
+        signers: map![
+            &e,
+            (alice.signer(&e, &verifier), alice.assert(&e, &challenge))
+        ],
+        context_rule_ids: rule_ids.clone(),
+    };
+    assert_eq!(
+        check_auth(&e, &account, &payload, &only_alice, &contexts),
+        Ok(())
+    );
+
+    let only_bob = AuthPayload {
+        signers: map![&e, (bob.signer(&e, &verifier), bob.assert(&e, &challenge))],
+        context_rule_ids: rule_ids,
+    };
+    assert_eq!(
+        check_auth(&e, &account, &payload, &only_bob, &contexts),
+        Ok(())
+    );
+}
+
+#[test]
+fn threshold_two_of_three_rejects_one_and_accepts_any_two() {
+    let e = Env::default();
+    let verifier = e.register(StablPasskeyVerifierContract, ());
+    let policy = e.register(StablThresholdPolicyContract, ());
+    let a = Passkey::new(61);
+    let b = Passkey::new(62);
+    let c = Passkey::new(63);
+
+    let account = e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![
+                &e,
+                a.signer(&e, &verifier),
+                b.signer(&e, &verifier),
+                c.signer(&e, &verifier),
+            ],
+            threshold_policies(&e, &policy, 2),
+        ),
+    );
+
+    let payload = [0x61u8; 32];
+    let contexts = some_context(&e);
+    let rule_ids: Vec<u32> = vec![&e, 0];
+    let challenge = auth_digest(&e, &payload, &rule_ids);
+
+    let one = AuthPayload {
+        signers: map![&e, (a.signer(&e, &verifier), a.assert(&e, &challenge))],
+        context_rule_ids: rule_ids.clone(),
+    };
+    assert!(check_auth(&e, &account, &payload, &one, &contexts).is_err());
+
+    let b_and_c = AuthPayload {
+        signers: map![
+            &e,
+            (b.signer(&e, &verifier), b.assert(&e, &challenge)),
+            (c.signer(&e, &verifier), c.assert(&e, &challenge)),
+        ],
+        context_rule_ids: rule_ids,
+    };
+    assert_eq!(
+        check_auth(&e, &account, &payload, &b_and_c, &contexts),
+        Ok(())
+    );
+}
+
+#[test]
+#[should_panic]
+fn threshold_above_signer_count_fails_at_construction() {
+    let e = Env::default();
+    let verifier = e.register(StablPasskeyVerifierContract, ());
+    let policy = e.register(StablThresholdPolicyContract, ());
+    let alice = Passkey::new(71);
+
+    e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![&e, alice.signer(&e, &verifier)],
+            threshold_policies(&e, &policy, 2),
+        ),
+    );
+}
+
+#[test]
+fn threshold_is_recorded_per_account_on_the_shared_policy() {
+    let e = Env::default();
+    let verifier = e.register(StablPasskeyVerifierContract, ());
+    let policy = e.register(StablThresholdPolicyContract, ());
+    let alice = Passkey::new(81);
+    let bob = Passkey::new(82);
+
+    let one_of_two = e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![&e, alice.signer(&e, &verifier), bob.signer(&e, &verifier)],
+            threshold_policies(&e, &policy, 1),
+        ),
+    );
+    let two_of_two = e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![&e, alice.signer(&e, &verifier), bob.signer(&e, &verifier)],
+            threshold_policies(&e, &policy, 2),
+        ),
+    );
+
+    let policy_client =
+        stabl_threshold_policy::contract::StablThresholdPolicyContractClient::new(&e, &policy);
+    assert_eq!(policy_client.get_threshold(&0, &one_of_two), 1);
+    assert_eq!(policy_client.get_threshold(&0, &two_of_two), 2);
 }
