@@ -16,8 +16,7 @@ on-chain under programmable authorization rules, signed with passkeys.
 ## What this adds on top of OpenZeppelin
 
 The account logic is [OpenZeppelin's `stellar-accounts`](https://github.com/OpenZeppelin/stellar-contracts).
-This repository is the integration layer around it, which is where passkey
-projects usually go wrong:
+This repository is the integration layer around it.
 
 - a stateless, admin-less **WebAuthn verifier** deployed once per network,
 - a permissionless **factory** so clients that can only issue plain contract
