@@ -26,6 +26,13 @@ Both contracts implement Soroban's `CustomAccountInterface`: the contract
 address itself acts as a Stellar account, and `__check_auth` decides whether
 a given set of signatures authorizes a given set of invocations.
 
+## Trying it on testnet
+
+`scripts/e2e/` is a browser page that authorises a call on a deployed account
+with a real passkey, end to end, and logs every intermediate value. It doubles
+as the reference for off-chain client implementations. See
+[scripts/e2e/README.md](scripts/e2e/README.md).
+
 ## Layout
 
 ```text

@@ -32,6 +32,8 @@ Stellar smart accounts — custom account contracts implementing
   WebAuthn challenge. See `contracts/stabl_passkey_multi_signer/src/test.rs`.
 - `make test` builds wasm first: `stabl_account_factory` tests `contractimport!`
   the real `stabl_passkey_multi_signer.wasm`. CI does the same.
+- `make e2e` serves `scripts/e2e/` (browser harness, testnet, real passkey).
+  It is the reference for how any off-chain client builds `AuthPayload`.
 - Testnet identity alias is `deployer` (global CLI config, funded via friendbot).
 
 ## Known issues
