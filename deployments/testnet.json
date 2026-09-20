@@ -23,6 +23,10 @@
     "stabl_p256_verifier": {
       "id": "CBBBQ333D7IBJBIM7KVWMCMM3VLO65E2X3QT2YRTZSOS2WOS7FKRUYMC",
       "deployed_at": "2026-09-20T18:39:23+00:00"
+    },
+    "stabl_threshold_policy": {
+      "id": "CA42FABTPFWGJKYEYYWXMYZXZSJ7S7T42P7MUIIFBIUG5PAJNCRSEZF3",
+      "deployed_at": "2026-09-20T19:31:42+00:00"
     }
   }
 }
