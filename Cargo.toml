@@ -8,6 +8,8 @@ members = [
 soroban-sdk = "27"
 stellar-accounts = { git = "https://github.com/OpenZeppelin/stellar-contracts.git", rev = "ec749c3b75971f2c35ced1bea3e2a7e536e91cda", package = "stellar-accounts" }
 hex-literal = "1.1"
+p256 = { version = "0.13", default-features = false, features = ["ecdsa"] }
+sha2 = "0.10"
 
 [profile.release]
 opt-level = "z"
