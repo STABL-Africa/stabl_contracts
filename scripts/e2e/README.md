@@ -1,6 +1,6 @@
 # Testnet end-to-end harness
 
-A static page that authorises a call on a deployed `stabl_passkey_multi_signer`
+A static page that authorises a call on a deployed `stabl_multi_signer`
 account with a real browser passkey. Everything an off-chain client has to do
 happens in the page, so `e2e.js` is also the reference for server-side
 implementations in any language.

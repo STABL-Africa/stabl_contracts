@@ -1,4 +1,4 @@
-// Browser harness: drive a testnet stabl_passkey_multi_signer account with a
+// Browser harness: drive a testnet stabl_multi_signer account with a
 // real passkey. Everything an off-chain client has to do is done here in the
 // page, so this file is the reference implementation for server-side code.
 //

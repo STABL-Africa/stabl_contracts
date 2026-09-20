@@ -23,15 +23,15 @@ Stellar smart accounts — custom account contracts implementing
   off-chain clients read it.
 - New contracts: add the crate, then add a `wanted <name> && deploy <name> -- <args>`
   line to `scripts/deploy_testnet.sh`. Contracts that the server instantiates
-  per user (e.g. `stabl_passkey_multi_signer`) use `upload` instead, which
+  per user (e.g. `stabl_multi_signer`) use `upload` instead, which
   records `wasm_hash` rather than an instance `id`.
 - `scripts/deploy_testnet.sh deployer <name...>` redeploys only the named
   contracts; other manifest entries are untouched.
 - Smart account signers sign `sha256(signature_payload || xdr(context_rule_ids))`,
   not the raw host payload. That digest is what goes to the browser as the
-  WebAuthn challenge. See `contracts/stabl_passkey_multi_signer/src/test.rs`.
+  WebAuthn challenge. See `contracts/stabl_multi_signer/src/test.rs`.
 - `make test` builds wasm first: `stabl_account_factory` tests `contractimport!`
-  the real `stabl_passkey_multi_signer.wasm`. CI does the same.
+  the real `stabl_multi_signer.wasm`. CI does the same.
 - `make e2e` serves `scripts/e2e/` (browser harness, testnet, real passkey).
   It is the reference for how any off-chain client builds `AuthPayload`.
 - Testnet identity alias is `deployer` (global CLI config, funded via friendbot).

@@ -24,7 +24,7 @@ use stellar_accounts::verifiers::webauthn::{
 // runs. Requires `stellar contract build` first (see Makefile `test`).
 mod account_wasm {
     soroban_sdk::contractimport!(
-        file = "../../target/wasm32v1-none/release/stabl_passkey_multi_signer.wasm"
+        file = "../../target/wasm32v1-none/release/stabl_multi_signer.wasm"
     );
 }
 

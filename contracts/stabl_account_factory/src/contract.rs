@@ -1,6 +1,6 @@
 //! # Stabl Account Factory
 //!
-//! Deploys `stabl_passkey_multi_signer` instances from a pinned wasm hash.
+//! Deploys `stabl_multi_signer` instances from a pinned wasm hash.
 //!
 //! Exists because the smart account must be initialised through its
 //! constructor, and some client SDKs can only issue plain contract
