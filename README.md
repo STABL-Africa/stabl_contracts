@@ -13,6 +13,23 @@ on-chain under programmable authorization rules, signed with passkeys.
 > incurred through any use of this code base. These contracts have not been
 > audited and are deployed to testnet only. Do not use them with real funds.
 
+## What this adds on top of OpenZeppelin
+
+The account logic is [OpenZeppelin's `stellar-accounts`](https://github.com/OpenZeppelin/stellar-contracts).
+This repository is the integration layer around it, which is where passkey
+projects usually go wrong:
+
+- a stateless, admin-less **WebAuthn verifier** deployed once per network,
+- a permissionless **factory** so clients that can only issue plain contract
+  invocations (no constructor deploys) can still create accounts,
+- tests that pin the exact bytes a client must produce: `key_data` layout,
+  the auth digest `sha256(signature_payload || xdr(context_rule_ids))` used as
+  the WebAuthn challenge, low-s `r||s` signatures, and `AuthPayload` encoding,
+  verified against a real browser assertion and against the built wasm,
+- a [browser harness](scripts/e2e/README.md) that runs the whole flow on
+  testnet and logs every intermediate value, usable as a reference for a
+  server implementation in any language.
+
 ## Contracts
 
 | Crate | Description |
