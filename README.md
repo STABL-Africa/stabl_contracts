@@ -11,7 +11,7 @@ on-chain under programmable authorization rules, signed with passkeys.
 > This is experimental software and is provided on an "as is" and "as available"
 > basis. We do not give any warranties and will not be liable for any losses
 > incurred through any use of this code base. These contracts have not been
-> audited and are deployed to testnet only. Do not use them with real funds.
+> audited. Do not use them with funds you cannot afford to lose.
 
 ## What this adds on top of OpenZeppelin
 
@@ -33,7 +33,7 @@ This repository is the integration layer around it.
 
 | Crate | Description |
 | --- | --- |
-| [`stabl_multi_signer`](contracts/stabl_multi_signer) | Multi-signer smart account built on [OpenZeppelin Stellar Contracts](https://github.com/OpenZeppelin/stellar-contracts) (`stellar-accounts`). Signers are either delegated (another Stellar address, verified natively) or external (a verifier contract plus public key, used for secp256r1/WebAuthn passkeys). Authorization is expressed as context rules with pluggable policies such as signature thresholds. |
+| [`stabl_multi_signer`](contracts/stabl_multi_signer) | Multi-signer smart account built on [OpenZeppelin Stellar Contracts](https://github.com/OpenZeppelin/stellar-contracts) (`stellar-accounts`). Signers are either delegated (another Stellar address, verified natively) or external (a verifier contract plus public key, used for secp256r1/WebAuthn passkeys). Authorization is expressed as context rules with pluggable policies such as signature thresholds. `upgrade(new_wasm_hash)` swaps the code under the account's own authorization, so only its signers can upgrade it. |
 | [`stabl_account_factory`](contracts/stabl_account_factory) | Permissionless, immutable factory that deploys `stabl_multi_signer` instances from a pinned wasm hash via `deploy(salt, signers, policies)`. Exists because the account needs its constructor and some client SDKs can only issue plain invocations, not constructor deploys. `predict(salt)` gives the address ahead of time. |
 | [`stabl_passkey_verifier`](contracts/stabl_passkey_verifier) | Stateless WebAuthn (passkey) signature verifier implementing OpenZeppelin's `Verifier` trait. Deployed once per network and referenced by smart accounts as `Signer::External(verifier, pubkey ++ credential_id)`. No admin, no upgrade path: a fix is a new address that each account migrates to under its own authorization. |
 | [`stabl_p256_verifier`](contracts/stabl_p256_verifier) | Stateless raw secp256r1 (P-256) ECDSA verifier for device-bound keys held in phone hardware (Secure Enclave, StrongBox). `key_data` is the 65-byte uncompressed public key, `sig_data` the 64-byte low-s `r ‖ s` signature over `sha256(auth digest)`. No WebAuthn ceremony, no admin, no upgrade path. |
@@ -55,8 +55,8 @@ as the reference for off-chain client implementations. See
 
 ```text
 contracts/<name>/        one crate per contract (workspace member)
-deployments/testnet.json contract IDs + network endpoints per environment
-scripts/deploy_testnet.sh build + deploy everything, update the manifest
+deployments/<network>.json contract IDs + network endpoints per environment
+scripts/deploy.sh          build + deploy everything to a network, update its manifest
 ```
 
 ## Prerequisites
@@ -72,13 +72,21 @@ scripts/deploy_testnet.sh build + deploy everything, update the manifest
 make test            # cargo unit tests (Env simulation, no network)
 make build           # compile contracts to wasm
 make deploy-testnet  # build, deploy to testnet, write deployments/testnet.json
-make fund            # top up the deployer account from friendbot
+make deploy-mainnet  # same for mainnet from `deployer-mainnet`; prompts first
+make fund            # top up the testnet deployer account from friendbot
 ```
 
-`make deploy-testnet` deploys every contract listed in
-`scripts/deploy_testnet.sh` and records the contract IDs in
-`deployments/testnet.json`. Redeploying creates a *new* contract instance
-(new ID); the manifest always points at the latest.
+`make deploy-testnet` deploys every contract listed in `scripts/deploy.sh`
+and records the contract IDs in `deployments/testnet.json`. Redeploying
+creates a *new* contract instance (new ID); the manifest always points at the
+latest. `scripts/deploy.sh <network> <identity> <name...>` redeploys a subset
+and leaves the other entries alone.
+
+Mainnet works the same way against `deployments/mainnet.json`. The identity
+`deployer-mainnet` is created and funded by hand (`stellar keys generate
+deployer-mainnet`, then send it XLM); the script refuses to invent one. The
+deployer pays for uploads and nothing more: none of these contracts keep an
+admin, and each account can only be upgraded by its own signers.
 
 Ad-hoc invocation for poking at a deployed contract:
 
@@ -92,10 +100,14 @@ stellar contract invoke --id smart_account --source deployer --network testnet -
 
 Soroban contract calls go through **Soroban RPC**
 (`https://soroban-testnet.stellar.org`).
-`deployments/testnet.json` carries everything a client
+`deployments/<network>.json` carries everything a client
 needs: network passphrase, RPC and Horizon URLs, and the current contract ID
-for each contract. Treat it as the single source of truth and read contract
-IDs from it rather than hard-coding them.
+or wasm hash for each contract. Treat it as the single source of truth: copy
+the manifest into the client's own repository, load it on the client's deploy
+(for example into a table keyed by network and contract name), and never
+hard-code IDs. A client can also verify an entry before trusting it by
+fetching the contract instance's wasm hash from RPC and comparing it with the
+hash of the wasm built from the tagged commit.
 
 ## Gotchas
 

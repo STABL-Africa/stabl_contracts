@@ -2,7 +2,7 @@ use soroban_sdk::{
     auth::{Context, CustomAccountInterface},
     contract, contractimpl,
     crypto::Hash,
-    Address, Env, Map, String, Val, Vec,
+    Address, BytesN, Env, Map, String, Val, Vec,
 };
 use stellar_accounts::smart_account::{
     add_context_rule, do_check_auth, AuthPayload, ContextRule, ContextRuleType, Signer,
@@ -23,6 +23,20 @@ impl StablPasskeyMultiSigner {
             &signers,
             &policies,
         );
+    }
+
+    /// Replace this account's code with an already-uploaded wasm.
+    ///
+    /// Authorized by the account itself: the call goes through `__check_auth`
+    /// like any other, so whatever signers and policies govern the default
+    /// context rule govern upgrades too. Nobody else, including whoever
+    /// deployed the factory, can upgrade an account.
+    ///
+    /// Storage is untouched; the new code must read the old layout. The
+    /// swap takes effect after this invocation completes.
+    pub fn upgrade(e: &Env, new_wasm_hash: BytesN<32>) {
+        e.current_contract_address().require_auth();
+        e.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
 
