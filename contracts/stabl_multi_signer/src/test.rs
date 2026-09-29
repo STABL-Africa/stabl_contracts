@@ -467,3 +467,67 @@ fn threshold_is_recorded_per_account_on_the_shared_policy() {
     assert_eq!(policy_client.get_threshold(&0, &one_of_two), 1);
     assert_eq!(policy_client.get_threshold(&0, &two_of_two), 2);
 }
+
+// ---------------------------------------------------------------------------
+// Upgrade: the account swaps its own code, under its own authorization.
+// ---------------------------------------------------------------------------
+
+/// Any other contract's wasm serves as the upgrade target; after the swap the
+/// address answers to that contract's interface instead of the account's.
+mod other_wasm {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32v1-none/release/stabl_p256_verifier.wasm"
+    );
+}
+
+#[test]
+fn upgrade_requires_the_accounts_own_auth() {
+    let e = Env::default();
+    let verifier = e.register(StablPasskeyVerifierContract, ());
+    let alice = Passkey::new(91);
+    let account = e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![&e, alice.signer(&e, &verifier)],
+            Map::<Address, Val>::new(&e),
+        ),
+    );
+    let new_hash = e.deployer().upload_contract_wasm(other_wasm::WASM);
+
+    // No auth provided: rejected, account code unchanged.
+    let client = StablPasskeyMultiSignerClient::new(&e, &account);
+    assert!(client.try_upgrade(&new_hash).is_err());
+    assert_eq!(client.get_context_rule(&0).signer_ids.len(), 1);
+}
+
+#[test]
+fn upgrade_swaps_code_when_authorized() {
+    let e = Env::default();
+    let verifier = e.register(StablPasskeyVerifierContract, ());
+    let alice = Passkey::new(92);
+    let account = e.register(
+        StablPasskeyMultiSigner,
+        (
+            vec![&e, alice.signer(&e, &verifier)],
+            Map::<Address, Val>::new(&e),
+        ),
+    );
+    let new_hash = e.deployer().upload_contract_wasm(other_wasm::WASM);
+
+    // The real path is a signed AuthPayload through __check_auth; here the
+    // account's authorization is mocked, which the signer tests above cover.
+    e.mock_all_auths();
+    StablPasskeyMultiSignerClient::new(&e, &account).upgrade(&new_hash);
+
+    // Same address now runs the verifier: its canonicalize_key answers and
+    // the account's own interface is gone.
+    let swapped = other_wasm::Client::new(&e, &account);
+    let key = BytesN::<65>::from_array(&e, &[4u8; 65]);
+    assert_eq!(
+        swapped.canonicalize_key(&key),
+        Bytes::from_array(&e, &[4u8; 65])
+    );
+    assert!(StablPasskeyMultiSignerClient::new(&e, &account)
+        .try_get_context_rule(&0)
+        .is_err());
+}

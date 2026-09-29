@@ -1,4 +1,4 @@
-.PHONY: build test deploy-testnet fund clean e2e
+.PHONY: build test deploy-testnet deploy-mainnet fund clean e2e
 
 build:
 	stellar contract build
@@ -8,7 +8,12 @@ test: build
 	cargo test -- --show-output
 
 deploy-testnet:
-	scripts/deploy_testnet.sh
+	scripts/deploy.sh testnet
+
+# Real XLM. Prompts for confirmation; identity `deployer-mainnet` must exist
+# and be funded. Pass CONTRACTS="name ..." to redeploy a subset.
+deploy-mainnet:
+	scripts/deploy.sh mainnet deployer-mainnet $(CONTRACTS)
 
 # Refill the deployer account from friendbot (testnet lumens run out).
 fund:
