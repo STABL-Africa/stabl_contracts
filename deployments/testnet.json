@@ -13,12 +13,12 @@
       "deployed_at": "2026-09-17T16:27:48+00:00"
     },
     "stabl_multi_signer": {
-      "wasm_hash": "2861efc7b121de7670d0ac10c7293d1754deccb3959ce6b5e9f3017f4ca7b3bf",
-      "uploaded_at": "2026-09-17T16:27:58+00:00"
+      "wasm_hash": "e1eec81183ca0de5c8749480a223de5d13721c0eaa413f231e49c6a443a022f0",
+      "uploaded_at": "2026-09-29T19:52:50+00:00"
     },
     "stabl_account_factory": {
-      "id": "CA3AATOXATEXMY6PHB4VEAZQW5LEAUE2J2KLVDUWDITZT3MHHGOJYUR6",
-      "deployed_at": "2026-09-17T17:30:47+00:00"
+      "id": "CDW6Y3GWT3GFKNMPIGGSSGQ7RCJQB5RSMLF7IKJUEQQQP62STHH5K73N",
+      "deployed_at": "2026-09-29T19:52:58+00:00"
     },
     "stabl_p256_verifier": {
       "id": "CBBBQ333D7IBJBIM7KVWMCMM3VLO65E2X3QT2YRTZSOS2WOS7FKRUYMC",
