@@ -27,6 +27,10 @@
     "stabl_threshold_policy": {
       "id": "CA42FABTPFWGJKYEYYWXMYZXZSJ7S7T42P7MUIIFBIUG5PAJNCRSEZF3",
       "deployed_at": "2026-09-20T19:31:42+00:00"
+    },
+    "stabl_spending_limit_policy": {
+      "id": "CBZ3D2XHA2NYPADBQAQZWDJZUSKZOAREIPU4NALAFEAFSFFGIEPKJB6P",
+      "deployed_at": "2026-10-05T15:54:17+00:00"
     }
   }
 }
