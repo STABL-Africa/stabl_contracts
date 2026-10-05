@@ -154,6 +154,10 @@ wanted stabl_p256_verifier && deploy stabl_p256_verifier
 # (account, rule). No constructor, no admin, one per network.
 wanted stabl_threshold_policy && deploy stabl_threshold_policy
 
+# stabl_spending_limit_policy: rolling-window cap per (account, rule), only on
+# CallContract(token) rules. No constructor, no admin, one per network.
+wanted stabl_spending_limit_policy && deploy stabl_spending_limit_policy
+
 # stabl_multi_signer: instantiated per user by the server with that
 # user's signers, so only the wasm is uploaded here.
 wanted stabl_multi_signer && upload stabl_multi_signer
