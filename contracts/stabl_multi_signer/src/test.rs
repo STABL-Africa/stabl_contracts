@@ -9,16 +9,18 @@ use p256::ecdsa::{
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use p256::SecretKey as P256SecretKey;
 use soroban_sdk::auth::{Context, ContractContext};
-use soroban_sdk::testutils::Address as _;
+use soroban_sdk::testutils::{Address as _, Ledger as _};
 use soroban_sdk::xdr::{AccountId, PublicKey, ScAddress, ToXdr, Uint256};
 use soroban_sdk::{
-    map, symbol_short, vec, Address, Bytes, BytesN, Env, IntoVal, InvokeError, Map, TryFromVal,
-    Val, Vec,
+    map, symbol_short, vec, Address, Bytes, BytesN, Env, IntoVal, InvokeError, Map, String, Symbol,
+    TryFromVal, Val, Vec,
 };
 use stabl_passkey_verifier::contract::StablPasskeyVerifierContract;
+use stabl_spending_limit_policy::contract::StablSpendingLimitPolicyContract;
 use stabl_threshold_policy::contract::StablThresholdPolicyContract;
 use stellar_accounts::policies::simple_threshold::SimpleThresholdAccountParams;
-use stellar_accounts::smart_account::{AuthPayload, Signer, SmartAccountError};
+use stellar_accounts::policies::spending_limit::SpendingLimitAccountParams;
+use stellar_accounts::smart_account::{AuthPayload, ContextRuleType, Signer, SmartAccountError};
 use stellar_accounts::verifiers::utils::base64_url_encode;
 use stellar_accounts::verifiers::webauthn::{
     WebAuthnSigData, AUTH_DATA_FLAGS_BE, AUTH_DATA_FLAGS_BS, AUTH_DATA_FLAGS_UP, AUTH_DATA_FLAGS_UV,
@@ -530,4 +532,151 @@ fn upgrade_swaps_code_when_authorized() {
     assert!(StablPasskeyMultiSignerClient::new(&e, &account)
         .try_get_context_rule(&0)
         .is_err());
+}
+
+// ---------------------------------------------------------------------------
+// Spending limit: a capped low-threshold rule next to the 2-of-3 default.
+// ---------------------------------------------------------------------------
+
+/// The mainnet topology in miniature: rule 0 `Default` 2-of-3, rule 1
+/// `CallContract(token)` 1-of-3 capped at `limit` per day.
+struct CappedAccount {
+    e: Env,
+    verifier: Address,
+    account: Address,
+    token: Address,
+    keys: [Passkey; 3],
+}
+
+impl CappedAccount {
+    fn new(limit: i128) -> Self {
+        let e = Env::default();
+        // OZ evicts spending entries at or below `current - period`
+        // (saturating), so ledger 0 would forget every transfer.
+        e.ledger().set_sequence_number(1_000_000);
+        let verifier = e.register(StablPasskeyVerifierContract, ());
+        let threshold = e.register(StablThresholdPolicyContract, ());
+        let spending = e.register(StablSpendingLimitPolicyContract, ());
+        let token = Address::generate(&e);
+        let keys = [Passkey::new(71), Passkey::new(72), Passkey::new(73)];
+        let signers: Vec<Signer> = Vec::from_iter(&e, keys.iter().map(|k| k.signer(&e, &verifier)));
+
+        let account = e.register(
+            StablPasskeyMultiSigner,
+            (signers.clone(), threshold_policies(&e, &threshold, 2)),
+        );
+
+        // Adding the rule is itself authorized under rule 0; that path is
+        // covered by the threshold tests, so mock it here and drop the mock
+        // before anything under test runs.
+        e.mock_all_auths();
+        let rule = StablPasskeyMultiSignerClient::new(&e, &account).add_context_rule(
+            &ContextRuleType::CallContract(token.clone()),
+            &String::from_str(&e, "token-small"),
+            &None,
+            &signers,
+            &map![
+                &e,
+                (
+                    threshold.clone(),
+                    SimpleThresholdAccountParams { threshold: 1 }.into_val(&e)
+                ),
+                (
+                    spending,
+                    SpendingLimitAccountParams {
+                        spending_limit: limit,
+                        period_ledgers: 17280,
+                    }
+                    .into_val(&e)
+                ),
+            ],
+        );
+        assert_eq!(rule.id, 1);
+        e.set_auths(&[]);
+
+        Self {
+            e,
+            verifier,
+            account,
+            token,
+            keys,
+        }
+    }
+
+    fn call(&self, contract: &Address, fn_name: Symbol, amount: i128) -> Vec<Context> {
+        let e = &self.e;
+        vec![
+            e,
+            Context::Contract(ContractContext {
+                contract: contract.clone(),
+                fn_name,
+                args: vec![
+                    e,
+                    self.account.into_val(e),
+                    Address::generate(e).into_val(e),
+                    amount.into_val(e),
+                ],
+            }),
+        ]
+    }
+
+    fn transfer(&self, amount: i128) -> Vec<Context> {
+        self.call(&self.token, symbol_short!("transfer"), amount)
+    }
+
+    /// Sign `contexts` with the first `n` keys under `rule`.
+    fn check(
+        &self,
+        rule: u32,
+        n: usize,
+        contexts: &Vec<Context>,
+    ) -> Result<(), Result<SmartAccountError, InvokeError>> {
+        let e = &self.e;
+        let payload = [0x71u8; 32];
+        let rule_ids: Vec<u32> = vec![e, rule];
+        let challenge = auth_digest(e, &payload, &rule_ids);
+        let mut signers = Map::new(e);
+        for k in &self.keys[..n] {
+            signers.set(k.signer(e, &self.verifier), k.assert(e, &challenge));
+        }
+        let auth = AuthPayload {
+            signers,
+            context_rule_ids: rule_ids,
+        };
+        check_auth(e, &self.account, &payload, &auth, contexts)
+    }
+}
+
+#[test]
+fn capped_rule_lets_one_signer_spend_up_to_the_limit_then_needs_default_rule() {
+    let a = CappedAccount::new(500);
+
+    assert_eq!(a.check(1, 1, &a.transfer(400)), Ok(()));
+    // 400 + 200 crosses the 500 cap.
+    assert!(a.check(1, 1, &a.transfer(200)).is_err());
+    // The failed attempt recorded nothing: the remaining 100 still fits.
+    assert_eq!(a.check(1, 1, &a.transfer(100)), Ok(()));
+    assert!(a.check(1, 1, &a.transfer(1)).is_err());
+    // Same transfer on the default rule: one signature is not enough...
+    assert!(a.check(0, 1, &a.transfer(200)).is_err());
+    // ...two are, and the default rule carries no cap.
+    assert_eq!(a.check(0, 2, &a.transfer(10_000)), Ok(()));
+}
+
+#[test]
+fn capped_rule_only_covers_transfer_on_its_own_token() {
+    let a = CappedAccount::new(500);
+
+    let other_token = Address::generate(&a.e);
+    assert!(a
+        .check(1, 1, &a.call(&other_token, symbol_short!("transfer"), 1))
+        .is_err());
+    assert!(a
+        .check(1, 1, &a.call(&a.token, symbol_short!("approve"), 1))
+        .is_err());
+    // A self-call such as `upgrade` or `add_signer` cannot use rule 1 either.
+    assert!(a
+        .check(1, 1, &a.call(&a.account, symbol_short!("upgrade"), 0))
+        .is_err());
+    assert_eq!(a.check(1, 1, &a.transfer(1)), Ok(()));
 }
