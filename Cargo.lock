@@ -1788,6 +1788,7 @@ dependencies = [
  "p256",
  "soroban-sdk",
  "stabl-passkey-verifier",
+ "stabl-spending-limit-policy",
  "stabl-threshold-policy",
  "stellar-accounts",
 ]
@@ -1808,6 +1809,14 @@ name = "stabl-passkey-verifier"
 version = "0.0.0"
 dependencies = [
  "hex-literal 1.1.0",
+ "soroban-sdk",
+ "stellar-accounts",
+]
+
+[[package]]
+name = "stabl-spending-limit-policy"
+version = "0.0.0"
+dependencies = [
  "soroban-sdk",
  "stellar-accounts",
 ]
