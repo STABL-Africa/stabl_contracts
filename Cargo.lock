@@ -1781,6 +1781,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "stabl-escrow"
+version = "0.0.0"
+dependencies = [
+ "soroban-sdk",
+ "stellar-accounts",
+]
+
+[[package]]
 name = "stabl-multi-signer"
 version = "0.0.0"
 dependencies = [
