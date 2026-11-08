@@ -16,6 +16,8 @@ pub enum Error {
     Exists = 3000,
     InvalidTransactionId = 4000,
     InvalidExpiry = 5000,
+    Expired = 5001,
+    InvalidState = 6000,
 }
 
 #[contracttype]
@@ -45,12 +47,13 @@ pub struct EscrowParams {
 }
 
 #[contractevent]
-pub struct EscrowLocked {
+pub struct EscrowStateChange {
     #[topic]
     pub recipient: Address,
     #[topic]
     pub sender: Address,
     pub transaction_id: String,
+    pub new_state: EscrowState,
     pub params: EscrowParams,
 }
 
@@ -59,6 +62,7 @@ pub struct StablEscrow;
 
 #[contractimpl]
 impl StablEscrow {
+    /// Lock funds in escrow for a given sender and transaction_id pair. 
     pub fn lock_for_offramp(
         e: &Env,
         sender: Address,
@@ -91,14 +95,40 @@ impl StablEscrow {
         );
         let token_client = token::Client::new(e, &params.token);
         token_client.transfer(&sender, e.current_contract_address(), &params.amount);
-        EscrowLocked {
+        EscrowStateChange {
             recipient: recipient,
             transaction_id: transaction_id,
             sender: sender,
+            new_state: EscrowState::Locked,
             params: params,
         }
         .publish(e);
         Ok(escrow_entry)
+    }
+
+    /// Release the escrow holding for the given sender and transaction_id to the bound recipient
+    pub fn release_escrow(e: &Env, sender: &Address, transaction_id: String) -> Result<EscrowEntry, Error> {
+        let mut entry: EscrowEntry = Self::get_escrow_entry(e, sender.clone(), transaction_id.clone())?;
+        if entry.state != EscrowState::Locked {
+            return Err(Error::InvalidState)
+        }
+        if e.ledger().timestamp() > entry.params.expiry {
+            return Err(Error::Expired)
+        } 
+        entry.recipient.require_auth();
+        entry.state = EscrowState::Claimed;
+        let recipient = entry.recipient.clone();
+        let token_client = token::Client::new(e, &entry.params.token);
+        token_client.transfer(&e.current_contract_address(), recipient.clone(), &entry.params.amount);
+        EscrowStateChange {
+            sender: sender.clone(),
+            recipient: recipient.clone(),
+            new_state: EscrowState::Claimed,
+            transaction_id: transaction_id,
+            params: entry.params.clone(),
+        }.publish(e);
+
+        Ok(entry)
     }
 
     pub fn get_escrow_entry(

@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::contract::{
-    Error, EscrowEntry, EscrowLocked, EscrowParams, EscrowState, StablEscrow, StablEscrowClient,
+    Error, EscrowEntry, EscrowStateChange, EscrowParams, EscrowState, StablEscrow, StablEscrowClient,
 };
 use soroban_sdk::{
     events::Event as _,
@@ -252,10 +252,11 @@ fn lock_publishes_escrow_locked_event() {
 
     assert_eq!(
         s.env.events().all().filter_by_contract(&s.contract_id),
-        [EscrowLocked {
+        [EscrowStateChange {
             recipient: s.recipient.clone(),
             sender: s.sender.clone(),
             transaction_id: s.tx_id(TX_ID),
+            new_state: EscrowState::Locked,
             params,
         }
         .to_xdr(&s.env, &s.contract_id)]

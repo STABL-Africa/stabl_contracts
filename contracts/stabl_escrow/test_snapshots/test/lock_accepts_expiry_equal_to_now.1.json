@@ -595,7 +595,7 @@
           "v0": {
             "topics": [
               {
-                "symbol": "escrow_locked"
+                "symbol": "escrow_state_change"
               },
               {
                 "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
@@ -606,6 +606,14 @@
             ],
             "data": {
               "map": [
+                {
+                  "key": {
+                    "symbol": "new_state"
+                  },
+                  "val": {
+                    "u32": 1
+                  }
+                },
                 {
                   "key": {
                     "symbol": "params"
