@@ -31,6 +31,10 @@
     "stabl_spending_limit_policy": {
       "id": "CBZ3D2XHA2NYPADBQAQZWDJZUSKZOAREIPU4NALAFEAFSFFGIEPKJB6P",
       "deployed_at": "2026-10-05T15:54:17+00:00"
+    },
+    "stabl_escrow": {
+      "id": "CDG57QUFXNWUHEKUGAV6XUPCXZSOLEVS3YFYBSKDROH74GLRUMRNA6GT",
+      "deployed_at": "2026-11-08T20:21:11+00:00"
     }
   }
 }

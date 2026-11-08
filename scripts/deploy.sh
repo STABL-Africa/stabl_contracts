@@ -170,6 +170,11 @@ if wanted stabl_account_factory; then
   deploy stabl_account_factory -- --wasm_hash "$ACCOUNT_WASM_HASH"
 fi
 
+# stabl_escrow: shared escrow keyed per (sender, transaction_id). 
+if [ "$NETWORK" = testnet ]; then
+  wanted stabl_escrow && deploy stabl_escrow
+fi
+
 echo
 echo "Deployments written to $DEPLOYMENTS"
 cat "$DEPLOYMENTS"

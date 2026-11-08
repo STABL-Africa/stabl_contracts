@@ -1,0 +1,23 @@
+[package]
+name = "stabl-escrow"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/STABL-Africa/stabl_contracts"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+# Marks this crate as a Soroban contract so `stellar-scaffold build` treats a
+# normal cargo dependency on it from another contract crate as a build-order
+# edge: this crate is built before any crate that depends on it.
+[package.metadata.stellar]
+contract = true
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
