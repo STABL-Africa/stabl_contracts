@@ -62,7 +62,7 @@ pub struct StablEscrow;
 
 #[contractimpl]
 impl StablEscrow {
-    /// Lock funds in escrow for a given sender and transaction_id pair. 
+    /// Lock funds in escrow for a given sender and transaction_id pair.
     pub fn lock_for_offramp(
         e: &Env,
         sender: Address,
@@ -105,27 +105,36 @@ impl StablEscrow {
     }
 
     /// Release the escrow holding for the given sender and transaction_id to the bound recipient
-    pub fn release_escrow(e: &Env, sender: Address, transaction_id: String) -> Result<EscrowEntry, Error> {
-        let mut entry: EscrowEntry = Self::get_escrow_entry(e, sender.clone(), transaction_id.clone())?;
+    pub fn release_escrow(
+        e: &Env,
+        sender: Address,
+        transaction_id: String,
+    ) -> Result<EscrowEntry, Error> {
+        let mut entry: EscrowEntry =
+            Self::get_escrow_entry(e, sender.clone(), transaction_id.clone())?;
         if entry.state != EscrowState::Locked {
-            return Err(Error::InvalidState)
+            return Err(Error::InvalidState);
         }
         if e.ledger().timestamp() > entry.params.expiry {
-            return Err(Error::Expired)
-        } 
+            return Err(Error::Expired);
+        }
         entry.recipient.require_auth();
         entry.state = EscrowState::Claimed;
         Self::save(e, &sender, &transaction_id, &entry);
-        let recipient = entry.recipient.clone();
         let token_client = token::Client::new(e, &entry.params.token);
-        token_client.transfer(&e.current_contract_address(), recipient.clone(), &entry.params.amount);
+        token_client.transfer(
+            &e.current_contract_address(),
+            &entry.recipient,
+            &entry.params.amount,
+        );
         EscrowStateChange {
             sender: sender,
-            recipient: recipient.clone(),
+            recipient: entry.recipient.clone(),
             new_state: EscrowState::Claimed,
             transaction_id: transaction_id,
             params: entry.params.clone(),
-        }.publish(e);
+        }
+        .publish(e);
 
         Ok(entry)
     }
