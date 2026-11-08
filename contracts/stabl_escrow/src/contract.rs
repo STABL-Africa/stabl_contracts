@@ -1,6 +1,6 @@
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, panic_with_error, token, Address, BytesN,
-    Env, String,
+    contract, contracterror, contractevent, contractimpl, contracttype, panic_with_error, token,
+    Address, BytesN, Env, String,
 };
 
 #[contracttype]
@@ -31,6 +31,7 @@ pub enum EscrowState {
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EscrowEntry {
+    pub recipient: Address,
     pub params: EscrowParams,
     pub state: EscrowState,
 }
@@ -40,9 +41,17 @@ pub struct EscrowEntry {
 pub struct EscrowParams {
     pub token: Address,
     pub amount: i128,
-    pub recipient: Address,
     pub expiry: u64,
     pub terms_hash: BytesN<32>,
+}
+
+#[contractevent]
+pub struct EscrowLocked {
+    #[topic]
+    pub recipient: Address,
+    #[topic]
+    pub sender: Address,
+    pub params: EscrowParams,
 }
 
 #[contract]
@@ -53,6 +62,7 @@ impl StablEscrow {
     pub fn lock_for_offramp(
         e: &Env,
         sender: Address,
+        recipient: Address,
         transaction_id: String,
         params: EscrowParams,
     ) -> EscrowEntry {
@@ -67,6 +77,7 @@ impl StablEscrow {
             panic_with_error!(e, Error::InvalidTransactionId);
         }
         let escrow_entry = EscrowEntry {
+            recipient: recipient.clone(),
             params: params.clone(),
             state: EscrowState::Locked,
         };
@@ -76,6 +87,12 @@ impl StablEscrow {
         );
         let token_client = token::Client::new(e, &params.token);
         token_client.transfer(&sender, e.current_contract_address(), &params.amount);
+        EscrowLocked {
+            recipient: recipient,
+            sender: sender,
+            params: params,
+        }
+        .publish(e);
         escrow_entry
     }
 

@@ -53,11 +53,10 @@ fn lock_moves_funds_to_escrow() {
     let params = EscrowParams {
         token: token,
         amount: amount,
-        recipient: recipient,
         expiry: expiry,
         terms_hash: terms_hash(&env, &amount, &expiry),
     };
-    let entry = client.lock_for_offramp(&sender, &transaction_id, &params);
+    let entry = client.lock_for_offramp(&sender, &recipient, &transaction_id, &params);
     assert_eq!(entry.state, EscrowState::Locked);
     assert_eq!(entry.params, params);
     assert_eq!(token_client.balance(&sender), (sender_balance - amount));
