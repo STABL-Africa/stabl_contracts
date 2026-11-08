@@ -1,0 +1,17 @@
+{
+  "name": "stabl-escrow-example",
+  "private": true,
+  "type": "module",
+  "description": "Reference client for stabl_escrow: compute terms_hash v1, check an escrow, claim or refund it.",
+  "scripts": {
+    "escrow": "tsx escrow.ts"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.0",
+    "typescript": "^5.6.0"
+  }
+}
