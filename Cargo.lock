@@ -1785,7 +1785,6 @@ name = "stabl-escrow"
 version = "0.0.0"
 dependencies = [
  "soroban-sdk",
- "stellar-accounts",
 ]
 
 [[package]]

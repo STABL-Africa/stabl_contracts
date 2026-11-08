@@ -1,22 +1,21 @@
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, panic_with_error, token,
-    Address, BytesN, Env, String,
+    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, BytesN,
+    Env, String,
 };
 
 #[contracttype]
 pub enum StablEscrowStorageKey {
-    Operator,
     EscrowHolding(Address, String),
 }
 
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(u32)]
 pub enum Error {
-    NotInitialized = 1,
-    InvalidAmount = 2,
-    AlreadySet = 3,
-    InvalidTransactionId = 4,
+    NotFound = 1000,
+    InvalidAmount = 2000,
+    Exists = 3000,
+    InvalidTransactionId = 4000,
+    InvalidExpiry = 5000,
 }
 
 #[contracttype]
@@ -25,7 +24,7 @@ pub enum Error {
 pub enum EscrowState {
     Locked = 1,
     Claimed = 2,
-    Expired = 3,
+    Refunded = 3,
 }
 
 #[contracttype]
@@ -51,6 +50,7 @@ pub struct EscrowLocked {
     pub recipient: Address,
     #[topic]
     pub sender: Address,
+    pub transaction_id: String,
     pub params: EscrowParams,
 }
 
@@ -65,16 +65,20 @@ impl StablEscrow {
         recipient: Address,
         transaction_id: String,
         params: EscrowParams,
-    ) -> EscrowEntry {
+    ) -> Result<EscrowEntry, Error> {
         sender.require_auth();
+
         if params.amount <= 0 {
-            panic_with_error!(e, Error::InvalidAmount);
-        }
-        if escrow_key_exists(e, &sender, &transaction_id) {
-            panic_with_error!(e, Error::AlreadySet);
+            return Err(Error::InvalidAmount);
         }
         if !is_canonical_uuid(&transaction_id) {
-            panic_with_error!(e, Error::InvalidTransactionId);
+            return Err(Error::InvalidTransactionId);
+        }
+        if params.expiry < e.ledger().timestamp() {
+            return Err(Error::InvalidExpiry);
+        }
+        if escrow_key_exists(e, &sender, &transaction_id) {
+            return Err(Error::Exists);
         }
         let escrow_entry = EscrowEntry {
             recipient: recipient.clone(),
@@ -82,18 +86,19 @@ impl StablEscrow {
             state: EscrowState::Locked,
         };
         e.storage().persistent().set(
-            &StablEscrowStorageKey::EscrowHolding(sender.clone(), transaction_id),
+            &StablEscrowStorageKey::EscrowHolding(sender.clone(), transaction_id.clone()),
             &escrow_entry,
         );
         let token_client = token::Client::new(e, &params.token);
         token_client.transfer(&sender, e.current_contract_address(), &params.amount);
         EscrowLocked {
             recipient: recipient,
+            transaction_id: transaction_id,
             sender: sender,
             params: params,
         }
         .publish(e);
-        escrow_entry
+        Ok(escrow_entry)
     }
 
     pub fn get_escrow_entry(
@@ -107,7 +112,7 @@ impl StablEscrow {
                 sender,
                 transaction_id,
             ))
-            .ok_or(Error::NotInitialized)
+            .ok_or(Error::NotFound)
     }
 }
 
@@ -119,10 +124,10 @@ fn escrow_key_exists(e: &Env, sender: &Address, transaction_id: &String) -> bool
             transaction_id.clone(),
         ))
 }
-/// Validates uuid strings are correct:
-/// - UTF8
-/// - lowercase
-/// - UUIDV4 - 32 hex digits and 4 dashes
+/// True if `uuid` is a canonical UUID string: 36 bytes, lowercase hex digits
+/// in the 8-4-4-4-12 layout separated by dashes. Any UUID version is
+/// accepted; only the textual form is checked, so the same transaction ID
+/// cannot be stored under different spellings (case, missing dashes).
 fn is_canonical_uuid(uuid: &String) -> bool {
     if uuid.len() != 36 {
         return false;
