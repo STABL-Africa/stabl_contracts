@@ -84,15 +84,13 @@ impl StablEscrow {
         if escrow_key_exists(e, &sender, &transaction_id) {
             return Err(Error::Exists);
         }
+
         let escrow_entry = EscrowEntry {
             recipient: recipient.clone(),
             params: params.clone(),
             state: EscrowState::Locked,
         };
-        e.storage().persistent().set(
-            &StablEscrowStorageKey::EscrowHolding(sender.clone(), transaction_id.clone()),
-            &escrow_entry,
-        );
+        Self::save(e, &sender, &transaction_id, &escrow_entry);
         let token_client = token::Client::new(e, &params.token);
         token_client.transfer(&sender, e.current_contract_address(), &params.amount);
         EscrowStateChange {
@@ -107,7 +105,7 @@ impl StablEscrow {
     }
 
     /// Release the escrow holding for the given sender and transaction_id to the bound recipient
-    pub fn release_escrow(e: &Env, sender: &Address, transaction_id: String) -> Result<EscrowEntry, Error> {
+    pub fn release_escrow(e: &Env, sender: Address, transaction_id: String) -> Result<EscrowEntry, Error> {
         let mut entry: EscrowEntry = Self::get_escrow_entry(e, sender.clone(), transaction_id.clone())?;
         if entry.state != EscrowState::Locked {
             return Err(Error::InvalidState)
@@ -117,11 +115,12 @@ impl StablEscrow {
         } 
         entry.recipient.require_auth();
         entry.state = EscrowState::Claimed;
+        Self::save(e, &sender, &transaction_id, &entry);
         let recipient = entry.recipient.clone();
         let token_client = token::Client::new(e, &entry.params.token);
         token_client.transfer(&e.current_contract_address(), recipient.clone(), &entry.params.amount);
         EscrowStateChange {
-            sender: sender.clone(),
+            sender: sender,
             recipient: recipient.clone(),
             new_state: EscrowState::Claimed,
             transaction_id: transaction_id,
@@ -143,6 +142,13 @@ impl StablEscrow {
                 transaction_id,
             ))
             .ok_or(Error::NotFound)
+    }
+
+    fn save(e: &Env, sender: &Address, transaction_id: &String, escrow_entry: &EscrowEntry) {
+        e.storage().persistent().set(
+            &StablEscrowStorageKey::EscrowHolding(sender.clone(), transaction_id.clone()),
+            &escrow_entry,
+        );
     }
 }
 

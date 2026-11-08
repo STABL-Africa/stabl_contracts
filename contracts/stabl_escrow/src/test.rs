@@ -2,7 +2,8 @@
 extern crate std;
 
 use crate::contract::{
-    Error, EscrowEntry, EscrowStateChange, EscrowParams, EscrowState, StablEscrow, StablEscrowClient,
+    Error, EscrowEntry, EscrowParams, EscrowState, EscrowStateChange, StablEscrow,
+    StablEscrowClient,
 };
 use soroban_sdk::{
     events::Event as _,
@@ -102,6 +103,14 @@ impl<'a> Setup<'a> {
     > {
         self.client
             .try_lock_for_offramp(sender, &self.recipient, &self.tx_id(id), params)
+    }
+
+    /// Lock `amount` for `sender` under `id` and return the params used.
+    fn lock(&self, sender: &Address, id: &str, amount: i128) -> EscrowParams {
+        let params = self.params(amount);
+        self.client
+            .lock_for_offramp(sender, &self.recipient, &self.tx_id(id), &params);
+        params
     }
 }
 
@@ -305,4 +314,163 @@ fn lock_without_sender_auth_fails() {
     let res = s.try_lock(&s.sender, TX_ID, &s.params(100_0000000));
     assert!(res.is_err());
     assert_eq!(s.token_client.balance(&s.sender), STARTING_BALANCE);
+}
+
+// --- release ---------------------------------------------------------------
+
+#[test]
+fn release_pays_recipient_and_marks_claimed() {
+    let s = Setup::new();
+    let params = s.lock(&s.sender, TX_ID, 100_0000000);
+
+    let entry = s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+
+    assert_eq!(entry.state, EscrowState::Claimed);
+    assert_eq!(entry.params, params);
+    assert_eq!(s.token_client.balance(&s.recipient), 100_0000000);
+    assert_eq!(s.token_client.balance(&s.contract_id), 0);
+    // The new state must be persisted, not just returned.
+    assert_eq!(
+        s.client.get_escrow_entry(&s.sender, &s.tx_id(TX_ID)).state,
+        EscrowState::Claimed
+    );
+}
+
+#[test]
+fn release_twice_fails_and_cannot_drain_other_escrows() {
+    // Two customers' funds sit in the same pooled contract balance. A second
+    // release of the first escrow must not pay out of the second one.
+    let s = Setup::new();
+    let other = Address::generate(&s.env);
+    s.sac_client.mint(&other, &STARTING_BALANCE);
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.lock(&other, TX_ID, 100_0000000);
+
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+    assert_eq!(
+        s.client.try_release_escrow(&s.sender, &s.tx_id(TX_ID)),
+        Err(Ok(Error::InvalidState))
+    );
+
+    assert_eq!(s.token_client.balance(&s.recipient), 100_0000000);
+    assert_eq!(s.token_client.balance(&s.contract_id), 100_0000000);
+    assert_eq!(
+        s.client.get_escrow_entry(&other, &s.tx_id(TX_ID)).state,
+        EscrowState::Locked
+    );
+}
+
+#[test]
+fn release_allowed_at_exact_expiry() {
+    let s = Setup::new();
+    let params = s.lock(&s.sender, TX_ID, 100_0000000);
+    s.env.ledger().set_timestamp(params.expiry);
+    let entry = s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+    assert_eq!(entry.state, EscrowState::Claimed);
+}
+
+#[test]
+fn release_after_expiry_fails() {
+    let s = Setup::new();
+    let params = s.lock(&s.sender, TX_ID, 100_0000000);
+    s.env.ledger().set_timestamp(params.expiry + 1);
+    assert_eq!(
+        s.client.try_release_escrow(&s.sender, &s.tx_id(TX_ID)),
+        Err(Ok(Error::Expired))
+    );
+    assert_eq!(s.token_client.balance(&s.contract_id), 100_0000000);
+    assert_eq!(
+        s.client.get_escrow_entry(&s.sender, &s.tx_id(TX_ID)).state,
+        EscrowState::Locked
+    );
+}
+
+#[test]
+fn release_missing_entry_fails() {
+    let s = Setup::new();
+    assert_eq!(
+        s.client.try_release_escrow(&s.sender, &s.tx_id(TX_ID)),
+        Err(Ok(Error::NotFound))
+    );
+}
+
+#[test]
+fn release_only_touches_its_own_sender_entry() {
+    let s = Setup::new();
+    let other = Address::generate(&s.env);
+    s.sac_client.mint(&other, &STARTING_BALANCE);
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.lock(&other, TX_ID, 250_0000000);
+
+    s.client.release_escrow(&other, &s.tx_id(TX_ID));
+
+    assert_eq!(s.token_client.balance(&s.recipient), 250_0000000);
+    assert_eq!(
+        s.client.get_escrow_entry(&s.sender, &s.tx_id(TX_ID)).state,
+        EscrowState::Locked
+    );
+}
+
+#[test]
+fn release_is_authorized_by_stored_recipient_only() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    let id = s.tx_id(TX_ID);
+
+    s.client.release_escrow(&s.sender, &id);
+
+    // Only the recipient bound at lock time signs. The payout transfer is
+    // made by the contract itself, so it needs no external signature.
+    assert_eq!(
+        s.env.auths(),
+        std::vec![(
+            s.recipient.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    s.contract_id.clone(),
+                    Symbol::new(&s.env, "release_escrow"),
+                    (s.sender.clone(), id).into_val(&s.env),
+                )),
+                sub_invocations: std::vec![],
+            }
+        )]
+    );
+}
+
+#[test]
+fn release_without_recipient_auth_fails() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.env.set_auths(&[]); // no signatures: not even the recipient's
+
+    assert!(s
+        .client
+        .try_release_escrow(&s.sender, &s.tx_id(TX_ID))
+        .is_err());
+    assert_eq!(s.token_client.balance(&s.recipient), 0);
+    assert_eq!(s.token_client.balance(&s.contract_id), 100_0000000);
+    assert_eq!(
+        s.client.get_escrow_entry(&s.sender, &s.tx_id(TX_ID)).state,
+        EscrowState::Locked
+    );
+}
+
+#[test]
+fn release_publishes_claimed_event() {
+    let s = Setup::new();
+    let params = s.lock(&s.sender, TX_ID, 100_0000000);
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+
+    let events = s.env.events().all().filter_by_contract(&s.contract_id);
+    assert_eq!(
+        events,
+        [EscrowStateChange {
+            recipient: s.recipient.clone(),
+            sender: s.sender.clone(),
+            transaction_id: s.tx_id(TX_ID),
+            new_state: EscrowState::Claimed,
+            params,
+        }
+        .to_xdr(&s.env, &s.contract_id)]
+    );
 }
