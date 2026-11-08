@@ -8,3 +8,6 @@ target
 
 # Internal planning notes
 docs/
+
+# Example dependencies
+node_modules/

@@ -17,6 +17,7 @@ pub enum Error {
     InvalidTransactionId = 4000,
     InvalidExpiry = 5000,
     Expired = 5001,
+    NotExpired = 5002,
     InvalidState = 6000,
 }
 
@@ -136,6 +137,40 @@ impl StablEscrow {
         }
         .publish(e);
 
+        Ok(entry)
+    }
+
+    /// Return an unreleased escrow to its sender once it has expired.
+    ///
+    /// Permissionless: anyone may trigger it to refund the sender.
+    /// Release is allowed while `now <= expiry`, refund only once `now > expiry`.
+    ///  If the transfer to the sender fails (trustline
+    /// removed, account deauthorized) the call rolls back.
+    pub fn refund_escrow(
+        e: &Env,
+        sender: Address,
+        transaction_id: String,
+    ) -> Result<EscrowEntry, Error> {
+        let mut entry: EscrowEntry =
+            Self::get_escrow_entry(e, sender.clone(), transaction_id.clone())?;
+        if entry.state != EscrowState::Locked {
+            return Err(Error::InvalidState);
+        }
+        if e.ledger().timestamp() <= entry.params.expiry {
+            return Err(Error::NotExpired);
+        }
+        entry.state = EscrowState::Refunded;
+        Self::save(e, &sender, &transaction_id, &entry);
+        let token_client = token::Client::new(e, &entry.params.token);
+        token_client.transfer(&e.current_contract_address(), &sender, &entry.params.amount);
+        EscrowStateChange {
+            recipient: entry.recipient.clone(),
+            sender,
+            transaction_id,
+            new_state: EscrowState::Refunded,
+            params: entry.params.clone(),
+        }
+        .publish(e);
         Ok(entry)
     }
 

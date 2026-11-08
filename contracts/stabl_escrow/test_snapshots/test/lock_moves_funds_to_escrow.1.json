@@ -89,7 +89,7 @@
                         "symbol": "terms_hash"
                       },
                       "val": {
-                        "bytes": "70c199205c956748f53b5b938c8a7ce12a33744b071fa273c6c75297d9599b07"
+                        "bytes": "f0d098de712264377f63f8af9bfbe71999cda9bb3ea9b4ca519c925b24480d3a"
                       }
                     },
                     {
@@ -154,7 +154,7 @@
               "seq_num": "0",
               "num_sub_entries": 0,
               "inflation_dest": null,
-              "flags": 0,
+              "flags": 2,
               "home_domain": "",
               "thresholds": "01010101",
               "signers": [],
@@ -275,7 +275,7 @@
                             "symbol": "terms_hash"
                           },
                           "val": {
-                            "bytes": "70c199205c956748f53b5b938c8a7ce12a33744b071fa273c6c75297d9599b07"
+                            "bytes": "f0d098de712264377f63f8af9bfbe71999cda9bb3ea9b4ca519c925b24480d3a"
                           }
                         },
                         {

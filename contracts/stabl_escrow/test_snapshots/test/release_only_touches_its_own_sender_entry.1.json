@@ -111,7 +111,7 @@
                         "symbol": "terms_hash"
                       },
                       "val": {
-                        "bytes": "73e5c6489855e027b044178b1b1dcfcc25f06ca58e38229646c2309fe0fb9176"
+                        "bytes": "10f32dbc95a79338e49d55879d9a50c91a2e50bd701586626be1933d83a309de"
                       }
                     },
                     {
@@ -193,7 +193,7 @@
                         "symbol": "terms_hash"
                       },
                       "val": {
-                        "bytes": "0b864b588012fa7526ed614cf6c78117f755ad693a027af2fab4d79f6e08eedc"
+                        "bytes": "f0e0bf48439b26e1293f22d1bf91513145963114439da4c81178723c21d486d4"
                       }
                     },
                     {
@@ -279,7 +279,7 @@
               "seq_num": "0",
               "num_sub_entries": 0,
               "inflation_dest": null,
-              "flags": 0,
+              "flags": 2,
               "home_domain": "",
               "thresholds": "01010101",
               "signers": [],
@@ -440,7 +440,7 @@
                             "symbol": "terms_hash"
                           },
                           "val": {
-                            "bytes": "73e5c6489855e027b044178b1b1dcfcc25f06ca58e38229646c2309fe0fb9176"
+                            "bytes": "10f32dbc95a79338e49d55879d9a50c91a2e50bd701586626be1933d83a309de"
                           }
                         },
                         {
@@ -528,7 +528,7 @@
                             "symbol": "terms_hash"
                           },
                           "val": {
-                            "bytes": "0b864b588012fa7526ed614cf6c78117f755ad693a027af2fab4d79f6e08eedc"
+                            "bytes": "f0e0bf48439b26e1293f22d1bf91513145963114439da4c81178723c21d486d4"
                           }
                         },
                         {
