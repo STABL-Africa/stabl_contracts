@@ -55,7 +55,7 @@ impl StablEscrow {
         sender: Address,
         transaction_id: String,
         params: EscrowParams,
-    ) {
+    ) -> EscrowEntry {
         sender.require_auth();
         if params.amount <= 0 {
             panic_with_error!(e, Error::InvalidAmount);
@@ -66,26 +66,32 @@ impl StablEscrow {
         if !is_canonical_uuid(&transaction_id) {
             panic_with_error!(e, Error::InvalidTransactionId);
         }
+        let escrow_entry = EscrowEntry {
+            params: params.clone(),
+            state: EscrowState::Locked,
+        };
         e.storage().persistent().set(
             &StablEscrowStorageKey::EscrowHolding(sender.clone(), transaction_id),
-            &EscrowEntry {
-                params: params.clone(),
-                state: EscrowState::Locked,
-            },
+            &escrow_entry,
         );
         let token_client = token::Client::new(e, &params.token);
         token_client.transfer(&sender, e.current_contract_address(), &params.amount);
+        escrow_entry
     }
 
-pub fn get_escrow_entry(e: &Env, sender: Address, transaction_id: String) -> Result<EscrowEntry, Error> {
+    pub fn get_escrow_entry(
+        e: &Env,
+        sender: Address,
+        transaction_id: String,
+    ) -> Result<EscrowEntry, Error> {
         e.storage()
-        .persistent()
-        .get(&StablEscrowStorageKey::EscrowHolding(
-            sender,
-            transaction_id,
-        )).ok_or(Error::NotInitialized)
-}
-
+            .persistent()
+            .get(&StablEscrowStorageKey::EscrowHolding(
+                sender,
+                transaction_id,
+            ))
+            .ok_or(Error::NotInitialized)
+    }
 }
 
 fn escrow_key_exists(e: &Env, sender: &Address, transaction_id: &String) -> bool {

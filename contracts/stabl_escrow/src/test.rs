@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::contract::{EscrowParams, StablEscrow, StablEscrowClient};
+use crate::contract::{EscrowParams, EscrowState, StablEscrow, StablEscrowClient};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     token::{StellarAssetClient, TokenClient},
@@ -42,22 +42,24 @@ fn lock_moves_funds_to_escrow() {
     let admin = Address::generate(&env);
     let sender = Address::generate(&env);
     let (token, token_client, sac_client) = create_token(&env, &admin);
-    sac_client.mint(&sender, &1_000_0000000);
+    let sender_balance = 1_000_0000000;
+    sac_client.mint(&sender, &sender_balance);
     let contract_id = env.register(StablEscrow, ());
     let client = StablEscrowClient::new(&env, &contract_id);
 
     let recipient = Address::generate(&env);
-    let amount = 5_000_000_000;
+    let amount = 6_000_000_000;
     let transaction_id = String::from_str(&env, "018aecc6-4202-4882-8efb-7f173d551c3e");
     let params = EscrowParams {
         token: token,
-        amount: 5_000_000_000,
+        amount: amount,
         recipient: recipient,
         expiry: expiry,
         terms_hash: terms_hash(&env, &amount, &expiry),
     };
-    client.lock_for_offramp(&sender, &transaction_id, &params);
-    std::dbg!(token_client.balance(&sender));
-    std::dbg!(token_client.balance(&contract_id));
-    std::dbg!(client.get_escrow_entry(&sender, &transaction_id));
+    let entry = client.lock_for_offramp(&sender, &transaction_id, &params);
+    assert_eq!(entry.state, EscrowState::Locked);
+    assert_eq!(entry.params, params);
+    assert_eq!(token_client.balance(&sender), (sender_balance - amount));
+    assert_eq!(token_client.balance(&contract_id), amount);
 }
