@@ -6,6 +6,7 @@ use soroban_sdk::{
 #[contracttype]
 pub enum StablEscrowStorageKey {
     EscrowHolding(Address, String),
+    Payout(Address, String),
 }
 
 #[contracterror]
@@ -19,6 +20,7 @@ pub enum Error {
     Expired = 5001,
     NotExpired = 5002,
     InvalidState = 6000,
+    PayoutRecorded = 6001,
 }
 
 #[contracttype]
@@ -56,6 +58,18 @@ pub struct EscrowStateChange {
     pub transaction_id: String,
     pub new_state: EscrowState,
     pub params: EscrowParams,
+}
+
+/// The recipient's record of the off-chain payout a claim funded. The
+/// contract cannot verify it; it fixes, once, what the recipient says it paid.
+#[contractevent]
+pub struct PayoutRecorded {
+    #[topic]
+    pub recipient: Address,
+    #[topic]
+    pub sender: Address,
+    pub transaction_id: String,
+    pub payout_hash: BytesN<32>,
 }
 
 #[contract]
@@ -172,6 +186,46 @@ impl StablEscrow {
         }
         .publish(e);
         Ok(entry)
+    }
+
+    /// Record, once, a hash of the off-chain payout a claimed escrow funded.
+    ///
+    /// Only the escrow's recipient may record it, and only after claiming.
+    pub fn record_payout(
+        e: &Env,
+        sender: Address,
+        transaction_id: String,
+        payout_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        let entry: EscrowEntry = Self::get_escrow_entry(e, sender.clone(), transaction_id.clone())?;
+        if entry.state != EscrowState::Claimed {
+            return Err(Error::InvalidState);
+        }
+        let key = StablEscrowStorageKey::Payout(sender.clone(), transaction_id.clone());
+        if e.storage().persistent().has(&key) {
+            return Err(Error::PayoutRecorded);
+        }
+        entry.recipient.require_auth();
+        e.storage().persistent().set(&key, &payout_hash);
+        PayoutRecorded {
+            recipient: entry.recipient,
+            sender,
+            transaction_id,
+            payout_hash,
+        }
+        .publish(e);
+        Ok(())
+    }
+
+    pub fn get_payout(
+        e: &Env,
+        sender: Address,
+        transaction_id: String,
+    ) -> Result<BytesN<32>, Error> {
+        e.storage()
+            .persistent()
+            .get(&StablEscrowStorageKey::Payout(sender, transaction_id))
+            .ok_or(Error::NotFound)
     }
 
     pub fn get_escrow_entry(

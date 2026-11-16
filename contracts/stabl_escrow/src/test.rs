@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::contract::{
-    Error, EscrowEntry, EscrowParams, EscrowState, EscrowStateChange, StablEscrow,
+    Error, EscrowEntry, EscrowParams, EscrowState, EscrowStateChange, PayoutRecorded, StablEscrow,
     StablEscrowClient,
 };
 use soroban_sdk::{
@@ -701,6 +701,148 @@ fn refund_publishes_refunded_event() {
             transaction_id: s.tx_id(TX_ID),
             new_state: EscrowState::Refunded,
             params,
+        }
+        .to_xdr(&s.env, &s.contract_id)]
+    );
+}
+
+// --- payout record ---------------------------------------------------------
+
+fn payout_hash(env: &Env, byte: u8) -> BytesN<32> {
+    BytesN::from_array(env, &[byte; 32])
+}
+
+#[test]
+fn record_payout_stores_hash_once_claimed() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+
+    s.client
+        .record_payout(&s.sender, &s.tx_id(TX_ID), &payout_hash(&s.env, 7));
+
+    assert_eq!(
+        s.client.get_payout(&s.sender, &s.tx_id(TX_ID)),
+        payout_hash(&s.env, 7)
+    );
+    // Recording moves no money and leaves the escrow claimed.
+    assert_eq!(s.token_client.balance(&s.recipient), 100_0000000);
+    assert_eq!(
+        s.client.get_escrow_entry(&s.sender, &s.tx_id(TX_ID)).state,
+        EscrowState::Claimed
+    );
+}
+
+#[test]
+fn record_payout_is_authorized_by_recipient_only() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+    let id = s.tx_id(TX_ID);
+    let hash = payout_hash(&s.env, 7);
+
+    s.client.record_payout(&s.sender, &id, &hash);
+
+    assert_eq!(
+        s.env.auths(),
+        std::vec![(
+            s.recipient.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    s.contract_id.clone(),
+                    Symbol::new(&s.env, "record_payout"),
+                    (s.sender.clone(), id, hash).into_val(&s.env),
+                )),
+                sub_invocations: std::vec![],
+            }
+        )]
+    );
+}
+
+#[test]
+fn record_payout_without_recipient_auth_fails() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+    s.env.set_auths(&[]);
+
+    assert!(s
+        .client
+        .try_record_payout(&s.sender, &s.tx_id(TX_ID), &payout_hash(&s.env, 7))
+        .is_err());
+    assert_eq!(
+        s.client.try_get_payout(&s.sender, &s.tx_id(TX_ID)),
+        Err(Ok(Error::NotFound))
+    );
+}
+
+#[test]
+fn record_payout_rejects_unclaimed_escrow() {
+    let s = Setup::new();
+    let params = s.lock(&s.sender, TX_ID, 100_0000000);
+    let hash = payout_hash(&s.env, 7);
+
+    // Locked: nothing has been paid out yet.
+    assert_eq!(
+        s.client
+            .try_record_payout(&s.sender, &s.tx_id(TX_ID), &hash),
+        Err(Ok(Error::InvalidState))
+    );
+
+    // Refunded: the sender got the funds back, so no payout was funded.
+    s.env.ledger().set_timestamp(params.expiry + 1);
+    s.client.refund_escrow(&s.sender, &s.tx_id(TX_ID));
+    assert_eq!(
+        s.client
+            .try_record_payout(&s.sender, &s.tx_id(TX_ID), &hash),
+        Err(Ok(Error::InvalidState))
+    );
+}
+
+#[test]
+fn record_payout_missing_escrow_returns_not_found() {
+    let s = Setup::new();
+    assert_eq!(
+        s.client
+            .try_record_payout(&s.sender, &s.tx_id(TX_ID), &payout_hash(&s.env, 7)),
+        Err(Ok(Error::NotFound))
+    );
+}
+
+#[test]
+fn record_payout_cannot_be_overwritten() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+    s.client
+        .record_payout(&s.sender, &s.tx_id(TX_ID), &payout_hash(&s.env, 7));
+
+    assert_eq!(
+        s.client
+            .try_record_payout(&s.sender, &s.tx_id(TX_ID), &payout_hash(&s.env, 8)),
+        Err(Ok(Error::PayoutRecorded))
+    );
+    assert_eq!(
+        s.client.get_payout(&s.sender, &s.tx_id(TX_ID)),
+        payout_hash(&s.env, 7)
+    );
+}
+
+#[test]
+fn record_payout_publishes_event() {
+    let s = Setup::new();
+    s.lock(&s.sender, TX_ID, 100_0000000);
+    s.client.release_escrow(&s.sender, &s.tx_id(TX_ID));
+    s.client
+        .record_payout(&s.sender, &s.tx_id(TX_ID), &payout_hash(&s.env, 7));
+
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id),
+        [PayoutRecorded {
+            recipient: s.recipient.clone(),
+            sender: s.sender.clone(),
+            transaction_id: s.tx_id(TX_ID),
+            payout_hash: payout_hash(&s.env, 7),
         }
         .to_xdr(&s.env, &s.contract_id)]
     );

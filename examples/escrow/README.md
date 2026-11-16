@@ -18,6 +18,7 @@ The contract ID and RPC endpoint are read from
 lock_for_offramp (sender signs)        -> Locked
 release_escrow   (recipient signs)     Locked -> Claimed    while now <= expiry, pays the recipient
 refund_escrow    (anyone)              Locked -> Refunded   once now > expiry, pays the sender
+record_payout    (recipient signs)     Claimed only, once   stores a hash of the off-chain payout
 ```
 
 - An escrow is keyed by `(sender, transaction_id)`. `transaction_id` is a
@@ -69,7 +70,11 @@ deployed there.
 
 A recipient should claim only after `check` shows `state: 'Locked'`,
 `claimable: true`, the expected token and amount, and `terms_hash matches the quote`.
-Execute the off-chain payout only after `claim` has confirmed.
+Execute the off-chain payout only after `claim` has confirmed, then record
+it with `record_payout(sender, transaction_id, payout_hash)`. The contract
+cannot verify the payout; it fixes, publicly and once, what the recipient says
+it paid, so anyone holding the payout receipt can recompute the hash and
+compare (`get_payout`, or the `payout_recorded` event).
 
 ## terms_hash format v1
 
